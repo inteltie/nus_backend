@@ -1,10 +1,9 @@
 # kafka_app/tasks.py
-from celery import shared_task
+# from celery import shared_task
 from confluent_kafka import Consumer, KafkaException
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 
-@shared_task
 def run_kafka_consumer():
     # Debug statement to confirm task start
     print("Starting the Kafka consumer task...")
