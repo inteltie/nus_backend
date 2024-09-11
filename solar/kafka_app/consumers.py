@@ -4,11 +4,20 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 
 class KafkaConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        # Accept the WebSocket connection
+        # Join a group for Kafka messages
+        await self.channel_layer.group_add(
+            'kafka_group',
+            self.channel_name
+        )
         await self.accept()
         print("WebSocket connection established.")
 
     async def disconnect(self, close_code):
+        # Leave the group when disconnected
+        await self.channel_layer.group_discard(
+            'kafka_group',
+            self.channel_name
+        )
         print("WebSocket disconnected.")
 
     async def receive(self, text_data):

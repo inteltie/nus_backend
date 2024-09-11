@@ -45,14 +45,16 @@ def run_kafka_consumer():
     finally:
         consumer.close()
 
+
 def process_message(data):
     print(f"Processing message: {data}")
-    # Send message to WebSocket group
+    # Send the processed message to the WebSocket group
     channel_layer = get_channel_layer()
     async_to_sync(channel_layer.group_send)(
-        'kafka_group',  # Name of the group
+        'kafka_group',  # Ensure this matches the group name in the WebSocket consumer
         {
-            'type': 'send_kafka_message',  # Name of the function in WebSocket consumer
+            'type': 'send_kafka_message',  # This should match the method in the WebSocket consumer
             'message': data
         }
     )
+
