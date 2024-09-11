@@ -58,3 +58,52 @@ def process_message(data):
         }
     )
 
+# New Kafka Consumer Task for Weather Data
+def run_weather_consumer():
+    # Kafka consumer configuration
+    consumer_config = {
+        'bootstrap.servers': 'b-2.mskclusternus1.8z6j8x.c2.kafka.ap-northeast-2.amazonaws.com:9092,b-1.mskclusternus1.8z6j8x.c2.kafka.ap-northeast-2.amazonaws.com:9092',
+        'group.id': 'weather-consumer-group',
+        'auto.offset.reset': 'earliest',
+        'security.protocol': 'PLAINTEXT'
+    }
+
+    consumer = Consumer(consumer_config)
+    topic = 'inverter-topic-1'  # Update if necessary
+    consumer.subscribe([topic])
+
+    print(f'Subscribed to Kafka topic: {topic}')
+
+    try:
+        while True:
+            # Polling messages from Kafka
+            msg = consumer.poll(1.0)
+            if msg is None:
+                print("No message received from Kafka.")
+                continue
+            if msg.error():
+                print(f"Consumer error: {msg.error()}")
+            else:
+                # Successfully received a message
+                data = msg.value().decode('utf-8')
+                print(f"Received message: {data}")
+                process_weather_message(data)
+
+    except KeyboardInterrupt:
+        print("Consumer stopped by user")
+
+    finally:
+        consumer.close()
+
+# Processing function to handle received weather messages
+def process_weather_message(data):
+    # Debug statement in message processing
+    print(f"Processing weather message: {data}")
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(
+        "weather_group",
+        {
+            "type": "send_weather_message",
+            "message": data
+        }
+    )
