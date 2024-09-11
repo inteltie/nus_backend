@@ -8,7 +8,7 @@ def start_kafka_consumer(request):
     This triggers the task asynchronously.
     """
     # Trigger the Kafka consumer task asynchronously
-    run_kafka_consumer.delay()
+    run_kafka_consumer()
 
     # Return a JSON response indicating the task has been started
     return JsonResponse({'status': 'Kafka consumer started'})
