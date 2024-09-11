@@ -11,12 +11,12 @@ def run_kafka_consumer():
     consumer_config = {
         'bootstrap.servers': 'b-2.mskclusternus1.8z6j8x.c2.kafka.ap-northeast-2.amazonaws.com:9092,b-1.mskclusternus1.8z6j8x.c2.kafka.ap-northeast-2.amazonaws.com:9092',
         'group.id': 'my-consumer-group',
-        'auto.offset.reset': 'earliest',
+        'auto.offset.reset': 'latest',
         'security.protocol': 'PLAINTEXT'
     }
 
     consumer = Consumer(consumer_config)
-    topic = 'inverter-topic'
+    topic = 'inverter-topic-1'
     consumer.subscribe([topic])
 
     print(f'Subscribed to Kafka topic: {topic}')
