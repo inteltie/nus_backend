@@ -12,7 +12,9 @@ class KafkaConsumer(AsyncWebsocketConsumer):
         print("WebSocket disconnected.")
 
     async def receive(self, text_data):
-        print("Message received on WebSocket: ", text_data)
+        print(f"Message received on WebSocket: {text_data}")
+        # Echo the received message back to the client (for testing)
+        await self.send(text_data=json.dumps({"message": f"Echo: {text_data}"}))
 
     async def send_kafka_message(self, event):
         # Send Kafka message to WebSocket client
