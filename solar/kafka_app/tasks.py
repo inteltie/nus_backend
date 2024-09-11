@@ -1,6 +1,8 @@
 # kafka_app/tasks.py
 from celery import shared_task
 from confluent_kafka import Consumer, KafkaException
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
 
 @shared_task
 def run_kafka_consumer():
@@ -45,5 +47,13 @@ def run_kafka_consumer():
         consumer.close()
 
 def process_message(data):
-    # Debug statement in message processing
     print(f"Processing message: {data}")
+    # Send message to WebSocket group
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(
+        'kafka_group',  # Name of the group
+        {
+            'type': 'send_kafka_message',  # Name of the function in WebSocket consumer
+            'message': data
+        }
+    )
