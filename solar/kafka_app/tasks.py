@@ -10,7 +10,7 @@ def run_kafka_consumer():
     # Kafka consumer configuration
     consumer_config = {
         'bootstrap.servers': 'b-2.mskclusternus1.8z6j8x.c2.kafka.ap-northeast-2.amazonaws.com:9092,b-1.mskclusternus1.8z6j8x.c2.kafka.ap-northeast-2.amazonaws.com:9092',
-        'group.id': 'my-consumer-group',
+        'group.id': 'my-consumer-group-new',
         'auto.offset.reset': 'latest',
         'security.protocol': 'PLAINTEXT'
     }
