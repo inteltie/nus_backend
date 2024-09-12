@@ -3,6 +3,9 @@ from django.http import JsonResponse
 from datetime import datetime, timedelta
 import pandas as pd
 import os
+import pytz
+
+IST = pytz.timezone('Asia/Kolkata')
 
 # File paths for the CSV files
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -99,4 +102,37 @@ def dc_power_hourly_api(request):
 def todays_gen_hourly_api(request):
     """API for hourly INVERTER1.1_Todays Gen_Kwh"""
     data = get_daily_data(hourly_df, 'INVERTER1.1_Todays Gen_Kwh')
+    return JsonResponse(data)
+
+
+minute_df = pd.read_csv(FILE_PATH)
+
+# Ensure the 'ds' column is treated as datetime
+minute_df['ds'] = pd.to_datetime(minute_df['ds'])
+
+def get_current_minute_data(df, feature):
+    """Fetch the current value of the feature from the latest timestamp in IST."""
+    current_time_ist = datetime.now(IST).strftime('%H:%M')
+    current_data = df[df['ds'].dt.tz_localize('UTC').dt.tz_convert('Asia/Kolkata').dt.strftime('%H:%M') == current_time_ist].tail(1)
+    
+    if not current_data.empty:
+        timestamp = current_data.iloc[0]['ds'].tz_localize('UTC').tz_convert('Asia/Kolkata').strftime('%Y-%m-%d %H:%M:%S')
+        value = current_data.iloc[0][feature]
+        return {'timestamp': timestamp, feature: value}
+    else:
+        return {'error': 'No data available for the current minute'}
+
+# API for Current Active Power
+def current_active_power_api(request):
+    data = get_current_minute_data(minute_df, 'INVERTER1.1_Active Power_Kw')
+    return JsonResponse(data)
+
+# API for Current DC Power
+def current_dc_power_api(request):
+    data = get_current_minute_data(minute_df, 'INVERTER1.1_DC Power_Kw')
+    return JsonResponse(data)
+
+# API for Current Today's Generation
+def current_todays_gen_api(request):
+    data = get_current_minute_data(minute_df, 'INVERTER1.1_Todays Gen_Kwh')
     return JsonResponse(data)
