@@ -9,106 +9,91 @@ IST = pytz.timezone('Asia/Kolkata')
 
 # File paths for the CSV files
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-FILE_PATH = os.path.join(BASE_DIR, 'data_api/data/inverter_min.csv')
-# Load the hourly inverter data CSV file
-HOURLY_FILE_PATH = 'data_api/data/inverter_hourly.csv'
+FILE_PATH_MINUTE = os.path.join(BASE_DIR, 'data_api/data/inverter_min.csv')
+FILE_PATH_HOURLY = os.path.join(BASE_DIR, 'data_api/data/inverter_hourly.csv')
 
 # Read the CSV data once to improve performance
-df = pd.read_csv(FILE_PATH)
-df['ds'] = pd.to_datetime(df['ds'])
+minute_df = pd.read_csv(FILE_PATH_MINUTE)
+minute_df['ds'] = pd.to_datetime(minute_df['ds'])
 
-def get_hourly_data(df, feature_column):
-    """Helper function to get the current, previous, and next hour data."""
-    # Get the current hour time range
-    now = datetime.now()
-    current_hour_start = now.replace(minute=0, second=0, microsecond=0)
-    current_hour_end = current_hour_start + timedelta(hours=1)
-
-    # Get previous and next hour time ranges
-    prev_hour_start = current_hour_start - timedelta(hours=1)
-    prev_hour_end = current_hour_start
-    next_hour_start = current_hour_end
-    next_hour_end = current_hour_end + timedelta(hours=1)
-
-    # Filter data for each hour range
-    current_data = df[(df['ds'] >= current_hour_start) & (df['ds'] < current_hour_end)][['ds', feature_column]]
-    prev_data = df[(df['ds'] >= prev_hour_start) & (df['ds'] < prev_hour_end)][['ds', feature_column]]
-    next_data = df[(df['ds'] >= next_hour_start) & (df['ds'] < next_hour_end)][['ds', feature_column]]
-
-    # Combine the data
-    result = {
-        'current_hour': current_data.to_dict(orient='records'),
-        'prev_hour': prev_data.to_dict(orient='records'),
-        'next_hour': next_data.to_dict(orient='records')
-    }
-    return result
-
-def active_power_api(request):
-    """API for INVERTER1.1_Active Power_Kw"""
-    data = get_hourly_data(df, 'INVERTER1.1_Active Power_Kw')
-    return JsonResponse(data)
-
-def dc_power_api(request):
-    """API for INVERTER1.1_DC Power_Kw"""
-    data = get_hourly_data(df, 'INVERTER1.1_DC Power_Kw')
-    return JsonResponse(data)
-
-def todays_gen_api(request):
-    """API for INVERTER1.1_Todays Gen_Kwh"""
-    data = get_hourly_data(df, 'INVERTER1.1_Todays Gen_Kwh')
-    return JsonResponse(data)
-
-
-# Read the CSV data once to improve performance
-hourly_df = pd.read_csv(HOURLY_FILE_PATH)
+hourly_df = pd.read_csv(FILE_PATH_HOURLY)
 hourly_df['ds'] = pd.to_datetime(hourly_df['ds'])
 
-def get_daily_data(df, feature_column):
-    """Helper function to get the current, previous, and next day data."""
-    # Get the current day time range
-    today = datetime.now().date()
-    current_day_start = datetime.combine(today, datetime.min.time())
-    current_day_end = current_day_start + timedelta(days=1)
 
-    # Get previous and next day time ranges
-    prev_day_start = current_day_start - timedelta(days=1)
-    prev_day_end = current_day_start
-    next_day_start = current_day_end
-    next_day_end = current_day_end + timedelta(days=1)
+def get_data(df, feature_column, duration, time_range):
+    """Helper function to get data based on feature type, duration, and range."""
+    now = datetime.now(IST)  # Get the current time in IST
+    
+    # Determine start and end based on duration and range
+    if duration == 'minute':
+        current_start = now.replace(minute=0, second=0, microsecond=0)  # Start of the current hour
+        current_end = current_start + timedelta(hours=1)  # End of the current hour
+    elif duration == 'hourly':
+        current_start = now.replace(hour=0, minute=0, second=0, microsecond=0)  # Start of the current day
+        current_end = current_start + timedelta(days=1)  # End of the current day
+    else:
+        return {'error': 'Invalid duration specified'}
 
-    # Filter data for each day range
-    current_data = df[(df['ds'] >= current_day_start) & (df['ds'] < current_day_end)][['ds', feature_column]]
-    prev_data = df[(df['ds'] >= prev_day_start) & (df['ds'] < prev_day_end)][['ds', feature_column]]
-    next_data = df[(df['ds'] >= next_day_start) & (df['ds'] < next_day_end)][['ds', feature_column]]
+    # Define the start and end times for previous, current, and next ranges
+    if time_range == 'current':
+        start = current_start
+        end = current_end
+    elif time_range == 'previous':
+        start = current_start - (timedelta(hours=1) if duration == 'minute' else timedelta(days=1))
+        end = current_start
+    elif time_range == 'next':
+        start = current_end
+        end = current_end + (timedelta(hours=1) if duration == 'minute' else timedelta(days=1))
+    else:
+        return {'error': 'Invalid range specified'}
 
-    # Combine the data
+    # Check if the 'ds' column is already timezone-aware
+    if df['ds'].dt.tz is None:
+        # Localize to IST if not already timezone-aware
+        df['ds'] = df['ds'].dt.tz_localize('Asia/Kolkata', ambiguous='NaT', nonexistent='NaT')
+    else:
+        # Convert to IST if already timezone-aware
+        df['ds'] = df['ds'].dt.tz_convert('Asia/Kolkata')
+    
+    # Filter the data
+    data = df[(df['ds'] >= start) & (df['ds'] < end)][['ds', feature_column]]
+
+    # Combine the data points based on the range and duration
     result = {
-        'current_day': current_data.to_dict(orient='records'),
-        'prev_day': prev_data.to_dict(orient='records'),
-        'next_day': next_data.to_dict(orient='records')
+        f'{time_range}_{duration}': data.to_dict(orient='records')
     }
     return result
 
-def active_power_hourly_api(request):
-    """API for hourly INVERTER1.1_Active Power_Kw"""
-    data = get_daily_data(hourly_df, 'INVERTER1.1_Active Power_Kw')
-    return JsonResponse(data)
 
-def dc_power_hourly_api(request):
-    """API for hourly INVERTER1.1_DC Power_Kw"""
-    data = get_daily_data(hourly_df, 'INVERTER1.1_DC Power_Kw')
-    return JsonResponse(data)
+def generalized_data_api(request):
+    feature_type = request.GET.get('feature_type')
+    duration = request.GET.get('duration')
+    time_range = request.GET.get('range')
 
-def todays_gen_hourly_api(request):
-    """API for hourly INVERTER1.1_Todays Gen_Kwh"""
-    data = get_daily_data(hourly_df, 'INVERTER1.1_Todays Gen_Kwh')
-    return JsonResponse(data)
+    # Define the mapping of feature types to their column names
+    feature_mapping = {
+        'active_power': 'INVERTER1.1_Active Power_Kw',
+        'dc_power': 'INVERTER1.1_DC Power_Kw',
+        'todays_gen': 'INVERTER1.1_Todays Gen_Kwh'
+    }
 
+    # Select the correct data frame based on duration
+    if duration == 'minute':
+        df = minute_df
+    elif duration == 'hourly':
+        df = hourly_df
+    else:
+        return JsonResponse({'error': 'Invalid duration parameter'}, status=400)
 
-minute_df = pd.read_csv(FILE_PATH)
+    # Get the corresponding column name for the feature
+    feature_column = feature_mapping.get(feature_type)
+    if not feature_column:
+        return JsonResponse({'error': 'Invalid feature_type parameter'}, status=400)
 
-# Ensure the 'ds' column is treated as datetime
-minute_df['ds'] = pd.to_datetime(minute_df['ds'])
+    # Fetch the data based on the duration and time range
+    data = get_data(df, feature_column, duration, time_range)
+
+    return JsonResponse(data, safe=False)
 
 def get_current_minute_data(df, feature):
     """Fetch the current value of the feature from the latest timestamp in IST."""
