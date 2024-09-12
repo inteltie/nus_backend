@@ -98,10 +98,20 @@ def generalized_data_api(request):
 def get_current_minute_data(df, feature):
     """Fetch the current value of the feature from the latest timestamp in IST."""
     current_time_ist = datetime.now(IST).strftime('%H:%M')
-    current_data = df[df['ds'].dt.tz_localize('UTC').dt.tz_convert('Asia/Kolkata').dt.strftime('%H:%M') == current_time_ist].tail(1)
+    
+    # Check if 'ds' is already timezone-aware
+    if df['ds'].dt.tz is None:
+        # Localize to UTC first if not timezone-aware
+        df['ds'] = df['ds'].dt.tz_localize('UTC').dt.tz_convert('Asia/Kolkata')
+    else:
+        # Convert to IST if already timezone-aware
+        df['ds'] = df['ds'].dt.tz_convert('Asia/Kolkata')
+        
+    # Filter data matching the current minute in IST
+    current_data = df[df['ds'].dt.strftime('%H:%M') == current_time_ist].tail(1)
     
     if not current_data.empty:
-        timestamp = current_data.iloc[0]['ds'].tz_localize('UTC').tz_convert('Asia/Kolkata').strftime('%Y-%m-%d %H:%M:%S')
+        timestamp = current_data.iloc[0]['ds'].strftime('%Y-%m-%d %H:%M:%S')
         value = current_data.iloc[0][feature]
         return {'timestamp': timestamp, feature: value}
     else:
