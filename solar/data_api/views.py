@@ -97,24 +97,33 @@ def generalized_data_api(request):
 
 def get_current_minute_data(df, feature):
     """Fetch the current value of the feature from the latest timestamp in IST."""
-    # Get current time in IST format
-    current_time_ist = datetime.now(IST).strftime('%H:%M')
-    print(f"Current IST Time: {current_time_ist}")
+    # Get current time in IST
+    now = datetime.now(IST)
+    current_time_ist = now.strftime('%H:%M')
+    
+    # Debug: Print current time being used
+    print(f"Current IST Time for filtering: {current_time_ist}")
 
-    # Ensure 'ds' column is consistent with IST without additional conversions
-    # Remove explicit timezone localization/conversion since Django is already set to Asia/Kolkata
+    # Check if 'ds' is already timezone-aware
+    if df['ds'].dt.tz is None:
+        # Localize 'ds' to IST if not timezone-aware
+        df['ds'] = df['ds'].dt.tz_localize(IST)
+    
+    # Filter data matching the current minute
     current_data = df[df['ds'].dt.strftime('%H:%M') == current_time_ist].tail(1)
 
-    print(f"Filtered Current Data: {current_data}")
+    # Debug: Check filtered data
+    print(f"Filtered Data for {current_time_ist}: {current_data}")
 
     if not current_data.empty:
-        # Directly fetch timestamp and feature value
+        # Extract and return the timestamp and feature value
         timestamp = current_data.iloc[0]['ds'].strftime('%Y-%m-%d %H:%M:%S')
         value = current_data.iloc[0][feature]
         return {'timestamp': timestamp, feature: value}
     else:
         print("No data available for the current minute")
         return {'error': 'No data available for the current minute'}
+
 
 
 # API for Current Active Power
