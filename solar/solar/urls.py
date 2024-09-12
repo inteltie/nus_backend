@@ -21,4 +21,5 @@ from django.urls import path, include
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('kafka/', include('kafka_app.urls')),  # Include kafka_app URLs
+    path('data-api/', include('data_api.urls')),
 ]
