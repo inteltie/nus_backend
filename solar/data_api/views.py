@@ -2,8 +2,12 @@
 from django.http import JsonResponse
 from datetime import datetime, timedelta
 import pandas as pd
-import os
+import os, json
 import pytz
+
+from django.views.decorators.csrf import csrf_exempt
+from django.shortcuts import render
+from django.conf import settings
 
 IST = pytz.timezone('Asia/Kolkata')
 
@@ -140,3 +144,48 @@ def current_dc_power_api(request):
 def current_todays_gen_api(request):
     data = get_current_minute_data(minute_df, 'INVERTER1.1_Todays Gen_Kwh')
     return JsonResponse(data)
+
+
+# Path to analytics.json file
+ANALYTICS_FILE_PATH = os.path.join(settings.BASE_DIR, 'data_api/data/analytics.json')
+
+def load_analytics():
+    """Load the analytics.json file and return its content."""
+    with open(ANALYTICS_FILE_PATH, 'r') as file:
+        return json.load(file)
+
+def save_analytics(data):
+    """Save updated analytics data to the analytics.json file."""
+    with open(ANALYTICS_FILE_PATH, 'w') as file:
+        json.dump(data, file, indent=4)
+
+def settings_page(request):
+    """View to display analytics settings and variables."""
+    analytics_data = load_analytics()  # Load the analytics.json data
+    return JsonResponse(analytics_data, safe=False)
+
+@csrf_exempt
+def save_settings(request):
+    """View to handle saving user-selected settings."""
+    if request.method == 'POST':
+        # Load existing analytics data
+        analytics_data = load_analytics()
+
+        # Get updated data from the frontend request (JSON payload)
+        updated_data = json.loads(request.body)
+
+        # Update analytics.json with new user selections and thresholds
+        for updated_analytic in updated_data['analytics']:
+            for analytic in analytics_data['analytics']:
+                if analytic['title'] == updated_analytic['title']:
+                    analytic['selected'] = updated_analytic['selected']
+                    for variable, thresholds in updated_analytic['variables'].items():
+                        analytic['variables'][variable]['min'] = thresholds['min']
+                        analytic['variables'][variable]['max'] = thresholds['max']
+
+        # Save the updated analytics data
+        save_analytics(analytics_data)
+
+        return JsonResponse({'message': 'Settings updated successfully.'}, status=200)
+
+    return JsonResponse({'error': 'Invalid request method.'}, status=400)

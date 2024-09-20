@@ -1,0 +1,159 @@
+{
+    "analytics": [
+        {
+            "title": "Inverter Underperformance in High Irradiance Conditions",
+            "description": "High irradiance with high module temperature but low inverter output indicates inverter issues such as thermal derating or malfunctions.",
+            "variables": {
+                "GHI_A_DATA_Avg": {
+                    "min": 100,
+                    "max": 800
+                },
+                "INVERTER1.1_Inverter_Temp.": {
+                    "min": 30,
+                    "max": 50
+                },
+                "INVERTER1.1_Active Power_Kw": {
+                    "min": 55,
+                    "max": 140
+                }
+            },
+            "selected": true
+        },
+        {
+            "title": "Low DC Power Despite High Irradiance",
+            "description": "High irradiance but low DC power output suggests issues like panel soiling, shading, or degradation.",
+            "variables": {
+                "GHI_A_DATA_Avg": {
+                    "min": 200,
+                    "max": 900
+                },
+                "INVERTER1.1_DC Power_Kw": {
+                    "min": 60,
+                    "max": 180
+                }
+            },
+            "selected": true
+        },
+        {
+            "title": "AC Voltage Fluctuations Despite Stable DC Input",
+            "description": "Stable DC input should result in stable AC output. Voltage fluctuations suggest grid or inverter synchronization issues.",
+            "variables": {
+                "INVERTER1.1_DC Voltage": {
+                    "min": 0,
+                    "max": 1000
+                },
+                "INVERTER1.1_AC Voltage (V)_BR": {
+                    "min": 0,
+                    "max": 1000
+                },
+                "INVERTER1.1_AC Voltage (V)_RY": {
+                    "min": 0,
+                    "max": 1000
+                },
+                "INVERTER1.1_AC Voltage (V)_YB": {
+                    "min": 0,
+                    "max": 1000
+                }
+            },
+            "selected": false
+        },
+        {
+            "title": "Inefficient Module Cooling in High Wind Speeds",
+            "description": "High wind speeds should help cool the modules. If temperatures remain elevated, check airflow and other cooling inefficiencies.",
+            "variables": {
+                "WS_Avg_km/h": {
+                    "min": 0,
+                    "max": 100
+                },
+                "T110PV_C_Avg_Degree Celcius": {
+                    "min": 0,
+                    "max": 50
+                }
+            },
+            "selected": false
+        },
+        {
+            "title": "Excessive Reactive Power Demand",
+            "description": "High reactive power demand may indicate grid voltage problems, poor power quality, or incorrect inverter settings.",
+            "variables": {
+                "INVERTER1.1_Reactive power_Kvar": {
+                    "min": 0,
+                    "max": 100
+                },
+                "INVERTER1.1_Power Factor": {
+                    "min": -1,
+                    "max": 1
+                }
+            },
+            "selected": false
+        },
+        {
+            "title": "AC Phase Imbalance Across Inverter Outputs",
+            "description": "Significant differences in AC current across the three phases may indicate load imbalances or inverter issues.",
+            "variables": {
+                "INVERTER1.1_AC Current (A)_Phase 1": {
+                    "min": 0,
+                    "max": 100
+                },
+                "INVERTER1.1_AC Current (A)_Phase 2": {
+                    "min": 0,
+                    "max": 100
+                },
+                "INVERTER1.1_AC Current (A)_Phase 3": {
+                    "min": 0,
+                    "max": 100
+                }
+            },
+            "selected": false
+        },
+        {
+            "title": "Reduced Power Output in High Ambient Temperatures",
+            "description": "High ambient temperatures can reduce inverter efficiency, resulting in lower than expected power output.",
+            "variables": {
+                "AirTC_Avg_Degree Celcius": {
+                    "min": 0,
+                    "max": 50
+                },
+                "INVERTER1.1_Active Power_Kw": {
+                    "min": 0,
+                    "max": 100
+                }
+            },
+            "selected": false
+        },
+        {
+            "title": "Low Humidity Leading to Static Charges and DC Voltage Instability",
+            "description": "Low relative humidity can cause static buildup, leading to DC voltage fluctuations and potential equipment issues.",
+            "variables": {
+                "RH_%": {
+                    "min": 0,
+                    "max": 100
+                },
+                "INVERTER1.1_DC Voltage": {
+                    "min": 0,
+                    "max": 1000
+                }
+            },
+            "selected": false
+        },
+        {
+            "title": "Phase-to-Phase AC Current Imbalance",
+            "description": "Imbalanced AC currents between different phases may indicate unbalanced loads or issues in the inverter\u2019s performance.",
+            "variables": {
+                "INVERTER1.1_AC Current (A)_Phase 1": {
+                    "min": 0,
+                    "max": 100
+                },
+                "INVERTER1.1_AC Current (A)_Phase 2": {
+                    "min": 0,
+                    "max": 100
+                },
+                "INVERTER1.1_AC Current (A)_Phase 3": {
+                    "min": 0,
+                    "max": 100
+                }
+            },
+            "selected": false
+        }
+    ]
+}
