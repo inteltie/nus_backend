@@ -13,7 +13,7 @@ IST = pytz.timezone('Asia/Kolkata')
 
 # File paths for the CSV files
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-FILE_PATH_MINUTE = os.path.join(BASE_DIR, 'data_api/data/inverter_min.csv')
+FILE_PATH_MINUTE = os.path.join(BASE_DIR, 'data_api/data/inv_min_2.csv')
 FILE_PATH_HOURLY = os.path.join(BASE_DIR, 'data_api/data/inverter_hourly.csv')
 
 # Read the CSV data once to improve performance
