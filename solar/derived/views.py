@@ -77,7 +77,7 @@ def derived_data(request):
     # Define the mapping of feature types to their column names
     feature_mapping = {
         'pr': 'PR',
-        'n_system': 'η_system',
+        'n_system': 'n_system',
         'capacity_factor': 'Capacity_Factor',
         'specific_yied': 'Specific_Yield_kWh_kWp',
         'energy_yeild': 'Energy_Yield_per_Area_kWh_m2',
