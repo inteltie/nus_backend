@@ -41,6 +41,8 @@ INSTALLED_APPS = [
     'data_api',
     'channels',
     'corsheaders',
+    'forecast',
+    'rest_framework',
 ]
 
 MIDDLEWARE = [

@@ -23,4 +23,5 @@ urlpatterns = [
     path('kafka/', include('kafka_app.urls')), 
     path('data-api/', include('data_api.urls')),
     path('derived/', include('derived.urls')),
+    path('forecast/', include('forecast.urls')),
 ]
