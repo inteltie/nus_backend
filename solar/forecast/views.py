@@ -116,6 +116,20 @@ def download_forecast(request):
     return FileResponse(open(zip_file_path, 'rb'), as_attachment=True, filename='forecast_results.zip')
 
 
+@api_view(['GET'])
+def download_sample(request):
+    """
+    API endpoint to download the sameple zip file.
+    """
+    zip_file_path = os.path.join(DATA_FOLDER, 'sample_format.zip')
+
+    if not os.path.exists(zip_file_path):
+        raise Http404("Sample zip file does not exist.")
+
+    # Send the zip file as a response without opening it manually
+    return FileResponse(open(zip_file_path, 'rb'), as_attachment=True, filename='sample_format.zip')
+
+
 
 @api_view(['POST'])
 def compare_power_output(request):
