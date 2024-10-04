@@ -26,3 +26,27 @@ def get_alert_logs(request):
                 "out_of_range_values": row[2:]
             })
     return JsonResponse(data, safe=False)
+
+
+def delete_alert(request, alert_id):
+    # Read current logs
+    data = []
+    with open(CSV_LOG_FILE, 'r') as file:
+        reader = csv.reader(file)
+        data = list(reader)
+
+    # Remove the specified alert if it exists
+    if 0 <= alert_id < len(data):
+        deleted_alert = data.pop(alert_id)
+        with open(CSV_LOG_FILE, 'w', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerows(data)
+        return JsonResponse({"status": "Deleted alert", "deleted_alert": deleted_alert})
+    else:
+        return JsonResponse({"status": "Alert ID not found"}, status=404)
+
+
+def delete_all_alerts(request):
+    # Clear the CSV file
+    open(CSV_LOG_FILE, 'w').close()  # This will truncate the file
+    return JsonResponse({"status": "All alerts deleted"})

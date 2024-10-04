@@ -4,6 +4,7 @@ from asgiref.sync import async_to_sync
 from datetime import datetime
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.layers import get_channel_layer
+import uuid
 
 # Define file paths
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -49,7 +50,9 @@ class AlertManager:
         with open(CSV_LOG_FILE, mode='a', newline='') as file:
             writer = csv.writer(file)
             for analytic in out_of_range_analytics:
+                unique_id = str(uuid.uuid4())  # Generate a unique ID
                 row = [
+                    unique_id,  # Unique identifier
                     datetime.now(), 
                     data.get('ds'), 
                     analytic['title'], 
