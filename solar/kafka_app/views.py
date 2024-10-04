@@ -4,7 +4,8 @@ import csv
 import os
 from django.conf import settings
 
-CSV_LOG_FILE = os.path.join(settings.BASE_DIR, 'kafka_app', 'alert_logs.csv')
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+CSV_LOG_FILE = os.path.join(BASE_DIR, 'kafka_app', 'alert_logs.csv')
 
 def start_kafka_consumer(request):
     run_kafka_consumer()

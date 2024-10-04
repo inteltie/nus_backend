@@ -6,8 +6,9 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.layers import get_channel_layer
 
 # Define file paths
-ANALYTICS_FILE_PATH = os.path.join(settings.BASE_DIR, 'data_api', 'data', 'analytics.json')
-CSV_LOG_FILE = os.path.join(settings.BASE_DIR, 'kafka_app', 'alert_logs.csv')
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ANALYTICS_FILE_PATH = os.path.join(BASE_DIR, 'data_api', 'data', 'analytics.json')
+CSV_LOG_FILE = os.path.join(BASE_DIR, 'kafka_app', 'alert_logs.csv')
 
 # Load analytics range data
 def load_analytics():
