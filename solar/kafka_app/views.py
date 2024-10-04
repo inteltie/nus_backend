@@ -22,17 +22,20 @@ def get_alert_logs(request):
     with open(CSV_LOG_FILE, 'r') as file:
         reader = csv.reader(file)
         for row in reader:
+            if len(row) < 5:  # Ensure there are enough columns in the row
+                continue
             log_entry = {
-                "log_timestamp": row[0],
-                "data_timestamp": row[1],
-                "title": row[2],
-                "description": row[3],
+                "log_timestamp": row[0],  # Unique ID
+                "data_timestamp": row[1],  # Data timestamp
+                "title": row[3],  # Title
+                "description": row[4],  # Description
                 "out_of_range_variables": [
-                    var for var in row[4:]  # This assumes remaining columns are out-of-range variables
+                    var for var in row[5:]  # All subsequent columns are out-of-range variables
                 ]
             }
             data.append(log_entry)
     return JsonResponse(data, safe=False)
+
 
 @csrf_exempt
 def delete_alert(request, alert_id):
