@@ -22,38 +22,60 @@ analytics_data = load_analytics()
 class AlertManager:
     @staticmethod
     def check_out_of_range(data):
-        out_of_range_values = {}
+        out_of_range_analytics = []
         for analytic in analytics_data.get('analytics', []):
             if analytic.get("selected"):
+                out_of_range_variables = {}
                 for variable, thresholds in analytic.get("variables", {}).items():
                     if variable in data:
                         value = data[variable]
                         if value < thresholds["min"] or value > thresholds["max"]:
-                            out_of_range_values[variable] = value
-        return out_of_range_values
+                            out_of_range_variables[variable] = {
+                                'actual_value': value,
+                                'expected_range': thresholds
+                            }
+                if out_of_range_variables:
+                    out_of_range_analytics.append({
+                        'title': analytic['title'],
+                        'description': analytic['description'],
+                        'out_of_range_variables': out_of_range_variables
+                    })
+        return out_of_range_analytics
 
 
     @staticmethod
-    def log_to_csv(data, out_of_range_values):
-        print(f"Logging data: {out_of_range_values}")  # Debugging statement
+    def log_to_csv(data, out_of_range_analytics):
+        print(f"Logging data: {out_of_range_analytics}")  # Debugging statement
         with open(CSV_LOG_FILE, mode='a', newline='') as file:
             writer = csv.writer(file)
-            row = [datetime.now(), data.get('ds')] + [f"{key}: {val}" for key, val in out_of_range_values.items()]
-            writer.writerow(row)
+            for analytic in out_of_range_analytics:
+                row = [
+                    datetime.now(), 
+                    data.get('ds'), 
+                    analytic['title'], 
+                    analytic['description']
+                ] + [
+                    f"{var}: {details['actual_value']} (expected {details['expected_range']['min']} - {details['expected_range']['max']})" 
+                    for var, details in analytic['out_of_range_variables'].items()
+                ]
+                writer.writerow(row)
 
 
     @staticmethod
-    def send_websocket_alert(out_of_range_values, data):
-        print(f"Sending WebSocket alert for: {out_of_range_values}")  # Debugging statement
+    def send_websocket_alert(out_of_range_analytics, data):
+        print(f"Sending WebSocket alert for: {out_of_range_analytics}")  # Debugging statement
         channel_layer = get_channel_layer()
-        message = {
-            "type": "alert",
-            "timestamp": data['ds'],
-            "out_of_range_values": out_of_range_values
-        }
-        async_to_sync(channel_layer.group_send)(
-            "alerts_group", {"type": "send_alert", "message": message}
-        )
+        for analytic in out_of_range_analytics:
+            message = {
+                "type": "alert",
+                "timestamp": data['ds'],
+                "title": analytic['title'],
+                "description": analytic['description'],
+                "out_of_range_variables": analytic['out_of_range_variables']
+            }
+            async_to_sync(channel_layer.group_send)(
+                "alerts_group", {"type": "send_alert", "message": message}
+            )
 
 
 
