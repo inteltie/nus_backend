@@ -46,14 +46,24 @@ def delete_alert(request, alert_id):
         data = list(reader)
 
     # Remove the specified alert if it exists
-    if 0 <= alert_id < len(data):
-        deleted_alert = data.pop(alert_id)
+    alert_found = False
+    deleted_alert = None
+
+    # Check for matching UUID in the first column of each row
+    for index, row in enumerate(data):
+        if str(row[0]) == str(alert_id):  # Compare with the unique ID (UUID)
+            deleted_alert = data.pop(index)
+            alert_found = True
+            break
+
+    if alert_found:
         with open(CSV_LOG_FILE, 'w', newline='') as file:
             writer = csv.writer(file)
             writer.writerows(data)
         return JsonResponse({"status": "Deleted alert", "deleted_alert": deleted_alert})
     else:
         return JsonResponse({"status": "Alert ID not found"}, status=404)
+
 
 @csrf_exempt
 def delete_all_alerts(request):
