@@ -22,35 +22,39 @@ analytics_data = load_analytics()
 class AlertManager:
     @staticmethod
     def check_out_of_range(data):
-        """Check if incoming data is out of range for any analytics."""
         out_of_range_values = {}
-        for key, thresholds in analytics_data.items():
-            if key in data:
-                value = data[key]
-                if value < thresholds['min'] or value > thresholds['max']:
-                    out_of_range_values[key] = value
+        for analytic in analytics_data.get('analytics', []):
+            if analytic.get("selected"):
+                for variable, thresholds in analytic.get("variables", {}).items():
+                    if variable in data:
+                        value = data[variable]
+                        if value < thresholds["min"] or value > thresholds["max"]:
+                            out_of_range_values[variable] = value
         return out_of_range_values
+
 
     @staticmethod
     def log_to_csv(data, out_of_range_values):
-        """Log the out-of-range values in a CSV."""
+        print(f"Logging data: {out_of_range_values}")  # Debugging statement
         with open(CSV_LOG_FILE, mode='a', newline='') as file:
             writer = csv.writer(file)
-            row = [datetime.now(), data['timestamp']] + [f"{key}: {val}" for key, val in out_of_range_values.items()]
+            row = [datetime.now(), data.get('ds')] + [f"{key}: {val}" for key, val in out_of_range_values.items()]
             writer.writerow(row)
+
 
     @staticmethod
     def send_websocket_alert(out_of_range_values, data):
-        """Send alert via WebSocket."""
+        print(f"Sending WebSocket alert for: {out_of_range_values}")  # Debugging statement
         channel_layer = get_channel_layer()
         message = {
             "type": "alert",
-            "timestamp": data['timestamp'],
+            "timestamp": data['ds'],
             "out_of_range_values": out_of_range_values
         }
         async_to_sync(channel_layer.group_send)(
             "alerts_group", {"type": "send_alert", "message": message}
         )
+
 
 
 # Consumers
