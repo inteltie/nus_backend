@@ -3,6 +3,7 @@ from django.utils.http import quote
 
 import os
 import pandas as pd
+import numpy as np
 import zipfile
 from django.conf import settings
 from django.http import JsonResponse
@@ -130,6 +131,20 @@ def download_sample(request):
     return FileResponse(open(zip_file_path, 'rb'), as_attachment=True, filename='sample_format.zip')
 
 
+@api_view(['GET'])
+def download_comparison(request):
+    """
+    API endpoint to download the comparison zip file.
+    """
+    zip_file_path = os.path.join(DATA_FOLDER, 'power_output_comparison.zip')
+
+    if not os.path.exists(zip_file_path):
+        raise Http404("comparison zip file does not exist.")
+
+    # Send the zip file as a response without opening it manually
+    return FileResponse(open(zip_file_path, 'rb'), as_attachment=True, filename='download_comparison.zip')
+
+
 
 @api_view(['POST'])
 def compare_power_output(request):
@@ -164,6 +179,28 @@ def compare_power_output(request):
         # Drop rows with NaT in 'ds' after conversion
         actual_power_df.dropna(subset=['ds'], inplace=True)
         weather_forecast_df.dropna(subset=['ds'], inplace=True)
+
+        # Combine the actual and predicted power data (retain only ds, predicted_power, actual_power)
+        predicted_power = weather_forecast_df[['ds', 'yhat']].rename(columns={'yhat': 'predicted_power'})
+        combined_full_data = actual_power_df.merge(predicted_power, on='ds', how='right').rename(
+            columns={'INVERTER1.1_Active Power_Kw': 'actual_power'})
+
+        # Step 1: Keep only 'ds', 'predicted_power', and 'actual_power'
+        combined_full_data = combined_full_data[['ds', 'predicted_power', 'actual_power']]
+
+        # Step 2: Fill missing 'actual_power' with NaN (if not already handled by merge)
+        combined_full_data['actual_power'] = combined_full_data['actual_power'].fillna(value=np.nan)
+
+        # Step 1: Save the entire combined data (all rows) to a CSV file
+        comparison_csv_path = os.path.join(DATA_FOLDER, 'power_output_comparison.csv')
+        combined_full_data.to_csv(comparison_csv_path, index=False)
+
+        # Step 2: Create a zip file for the CSV file
+        zip_file_path = os.path.join(DATA_FOLDER, 'power_output_comparison.zip')
+        with zipfile.ZipFile(zip_file_path, 'w') as zip_file:
+            zip_file.write(comparison_csv_path, os.path.basename(comparison_csv_path))
+
+        # Step 3: Generate the API response for the last 180 rows
 
         # Get the last 60 rows for the current hour from actual power data
         current_hour_data = actual_power_df.tail(60)
