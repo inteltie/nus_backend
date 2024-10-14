@@ -19,6 +19,19 @@ def process_message(data):
         }
     )
 
+def process_weather_message(data):
+    """Send the processed Kafka message to the WebSocket group."""
+    print(f"Processing message: {data}")
+    # Send the processed message to the WebSocket group
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(
+        'weather_group',  # Ensure this matches the group name in the WebSocket consumer
+        {
+            'type': 'send_kafka_message',  # This should match the method in the WebSocket consumer
+            'message': data
+        }
+    )
+
 def run_kafka_consumer():
     """Kafka Consumer for processing inverter data."""
     print("Starting the Kafka consumer task...")
@@ -110,7 +123,7 @@ def run_weather_consumer():
                     AlertManager.send_websocket_alert(out_of_range, data)
 
                 # Process the message to send to WebSocket group
-                process_message(data)
+                process_weather_message(data)
 
     except KeyboardInterrupt:
         print("Weather consumer stopped by user")
