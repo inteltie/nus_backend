@@ -27,7 +27,7 @@ def process_weather_message(data):
     async_to_sync(channel_layer.group_send)(
         'weather_group',  # Ensure this matches the group name in the WebSocket consumer
         {
-            'type': 'send_kafka_message',  # This should match the method in the WebSocket consumer
+            'type': 'send_weather_message',  # This should match the method in the WebSocket consumer
             'message': data
         }
     )
