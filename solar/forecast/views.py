@@ -456,20 +456,22 @@ def get_power_comparison(request):
                 })
 
         elif graph_type == 'minute':
-            # Combine by hour
+            # Group by hour
             for _, row in df_comparison.iterrows():
-                hour_key = row['ds'].strftime(f'%Y-%m-%d %H:%M')
+                hour_key = row['ds'].strftime(f'%Y-%m-%d %H:00')  # Set to the start of the hour
                 if hour_key not in response_data['data']:
-                    response_data['data'][hour_key] = []
+                    response_data['data'][hour_key] = []  # Initialize as a list if it doesn't exist
 
                 actual_power = max(row['actual_power'], 0) if pd.notna(row['actual_power']) else 0
                 predicted_power = max(row['predicted_power'], 0) if pd.notna(row['predicted_power']) else 0
 
+                # Append the current row's data to the list for that hour
                 response_data['data'][hour_key].append({
-                    'timestamp': row['ds'].strftime(f'%Y-%m-%d %H:%M:%S'),
+                    'timestamp': row['ds'].strftime(f'%Y-%m-%d %H:%M:%S'),  # Keep the minute in the timestamp
                     'actual_power': actual_power,
                     'predicted_power': predicted_power
                 })
+
 
         elif graph_type == 'daily':
             # Group daily data by month
