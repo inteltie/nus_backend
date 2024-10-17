@@ -1,157 +1,174 @@
 import pandas as pd
-import pickle
-import xgboost as xgb
-from prophet import Prophet
+import numpy as np
+from sklearn.preprocessing import StandardScaler
+import tensorflow as tf
+from tensorflow.keras.models import load_model
+import joblib
+import sys
+import os
 
-# 1. Load and preprocess data
-def load_and_preprocess_data(filepath):
+# Suppress TensorFlow warnings for cleaner output
+import logging
+
+logging.getLogger("tensorflow").setLevel(logging.ERROR)
+
+
+def load_new_data(excel_file):
     """
-    This function reads an Excel file and selects the relevant columns needed for the prediction. 
-    It also ensures the date column is in the correct datetime format.
-
-    Args:
-    filepath (str): The path to the Excel file.
-
-    Returns:
-    DataFrame: Preprocessed data with the necessary columns.
+    Loads new data from an Excel file.
     """
     try:
-        df = pd.read_excel(
-            filepath,
-            usecols=[
-                "ds",  # Date column
-                "GHI_A_DATA_Avg",  # Global Horizontal Irradiance
-                "POA_A_DATA_2_Avg",  # Plane of Array Irradiance (Sensor 2)
-                "AirTC_Avg_Degree Celcius",  # Ambient temperature
-                "RH_%",  # Relative Humidity
-                "POA_A_DATA_3_Avg",  # Plane of Array Irradiance (Sensor 3)
-                "WS_Avg_km/h",  # Wind Speed
-                "T110PV_C_Avg_Degree Celcius",  # PV module temperature
-            ],
-        )
-        df["ds"] = pd.to_datetime(df["ds"])  # Convert the date column to datetime
+        df = pd.read_excel(excel_file)
+        print("First 5 rows of the new dataset:")
+        print(df.head())
         return df
     except Exception as e:
-        raise ValueError(f"Error reading the Excel file: {e}")
+        print(f"Error loading Excel file: {e}")
+        sys.exit(1)
 
-# 2. Prepare features using scaler and PCA models
-def prepare_features(df, scaler_path, pca_path):
+
+def clean_data(df):
     """
-    This function applies scaling and PCA transformation on the input data 
-    using pre-trained scaler and PCA models.
-
-    Args:
-    df (DataFrame): The dataframe containing the features.
-    scaler_path (str): Path to the scaler model (saved as .pkl file).
-    pca_path (str): Path to the PCA model (saved as .pkl file).
-
-    Returns:
-    Array: Transformed features after applying scaling and PCA.
+    Cleans the dataframe by parsing datetime, sorting, and handling missing values.
     """
     try:
-        # Load the scaler model
-        with open(scaler_path, "rb") as f:
-            scaler = pickle.load(f)
+        if "ds" not in df.columns:
+            raise ValueError("The dataframe must contain a 'ds' column for datetime.")
 
-        # Load the PCA model
-        with open(pca_path, "rb") as f:
-            pca = pickle.load(f)
+        df["ds"] = pd.to_datetime(df["ds"], errors="coerce")
+        df.dropna(subset=["ds"], inplace=True)
+        df = df.sort_values("ds")
+        df.fillna(method="ffill", inplace=True)
 
-        # Apply scaling and PCA
-        features_scaled = scaler.transform(df.iloc[:, 1:])  # Skip the 'ds' column
-        features_pca = pca.transform(features_scaled)
-        return features_pca
+        if df.isnull().sum().sum() == 0:
+            print("\nNo missing values remain after cleaning.")
+        else:
+            print("\nMissing values still present after cleaning:")
+            print(df.isnull().sum())
+
+        return df
     except Exception as e:
-        raise ValueError(f"Error loading scaler or PCA models: {e}")
+        print(f"Error during data cleaning: {e}")
+        sys.exit(1)
 
-# 3. Predict power using a trained XGBoost model
-def predict_power(features, model_path):
+
+def feature_engineering(df):
     """
-    This function loads a pre-trained XGBoost model from a .bin file 
-    and uses it to predict power based on the input features.
-
-    Args:
-    features (Array): Scaled and PCA-transformed features.
-    model_path (str): Path to the XGBoost model file (.bin).
-
-    Returns:
-    Array: Predicted power values.
+    Adds time-based and cyclical features to the dataframe.
     """
     try:
-        # Load the pre-trained XGBoost model
-        model = xgb.XGBRegressor()
-        model.load_model(model_path)  # Load the model from the binary file
+        df["minute"] = df["ds"].dt.minute
+        df["hour"] = df["ds"].dt.hour
+        df["day"] = df["ds"].dt.day
+        df["day_of_week"] = df["ds"].dt.dayofweek
+        df["month"] = df["ds"].dt.month
+        df["is_weekend"] = df["day_of_week"].apply(lambda x: 1 if x >= 5 else 0)
 
-        # Predict the power using the model
-        predicted_power = model.predict(features)
-        return predicted_power
+        def add_cyclical_features(df, column, max_val):
+            df[f"{column}_sin"] = np.sin(2 * np.pi * df[column] / max_val)
+            df[f"{column}_cos"] = np.cos(2 * np.pi * df[column] / max_val)
+            return df
+
+        time_columns = {"minute": 60, "hour": 24, "day_of_week": 7, "month": 12}
+        for col, max_val in time_columns.items():
+            df = add_cyclical_features(df, col, max_val)
+
+        df.drop(columns=["minute", "hour", "day_of_week", "month"], inplace=True)
+
+        print("\nDataframe after feature engineering:")
+        print(df.head())
+
+        return df
     except Exception as e:
-        raise ValueError(f"Error loading or using the XGBoost model: {e}")
+        print(f"Error during feature engineering: {e}")
+        sys.exit(1)
 
-# 4. Setup and run the Prophet forecasting model
-def setup_and_run_prophet(df, params):
+
+def define_features(df):
     """
-    This function initializes and fits a Prophet model with specified parameters.
+    Defines weather and inverter feature lists.
+    """
+    weather_features = [
+        "GHI_A_DATA_Avg", "POA_A_DATA_2_Avg", "AirTC_Avg_Degree Celcius",
+        "RH_%", "POA_A_DATA_3_Avg", "WS_Avg_km/h", "T110PV_C_Avg_Degree Celcius"
+    ]
+    time_features = [
+        "is_weekend", "minute_sin", "minute_cos", "hour_sin", "hour_cos",
+        "day_of_week_sin", "day_of_week_cos", "month_sin", "month_cos"
+    ]
+    inverter_features = [
+        "INVERTER1.1_Active Power_Kw", "INVERTER1.1_Todays Gen_Kwh", "INVERTER1.1_DC Power_Kw"
+    ]
 
-    Args:
-    df (DataFrame): Dataframe with columns 'ds' (date) and 'y' (target variable for forecasting).
-    params (dict): Dictionary containing the model parameters for Prophet.
+    missing_weather = [feat for feat in weather_features if feat not in df.columns]
+    missing_time = [feat for feat in time_features if feat not in df.columns]
 
-    Returns:
-    Prophet: A fitted Prophet model ready for forecasting.
+    if missing_weather:
+        raise ValueError(f"Missing weather features: {missing_weather}")
+    if missing_time:
+        raise ValueError(f"Missing time features: {missing_time}")
+
+    return weather_features, time_features, inverter_features
+
+
+def generate_time_features(timestamp):
+    """
+    Generates time-based and cyclical features for a given timestamp.
+    """
+    minute = timestamp.minute
+    hour = timestamp.hour
+    day_of_week = timestamp.dayofweek
+    month = timestamp.month
+    is_weekend = 1 if day_of_week >= 5 else 0
+
+    minute_sin = np.sin(2 * np.pi * minute / 60)
+    minute_cos = np.cos(2 * np.pi * minute / 60)
+    hour_sin = np.sin(2 * np.pi * hour / 24)
+    hour_cos = np.cos(2 * np.pi * hour / 24)
+    day_of_week_sin = np.sin(2 * np.pi * day_of_week / 7)
+    day_of_week_cos = np.cos(2 * np.pi * day_of_week / 7)
+    month_sin = np.sin(2 * np.pi * month / 12)
+    month_cos = np.cos(2 * np.pi * month / 12)
+
+    time_features = [
+        is_weekend, minute_sin, minute_cos, hour_sin, hour_cos,
+        day_of_week_sin, day_of_week_cos, month_sin, month_cos
+    ]
+    return np.array(time_features)
+
+
+def forecast_future(
+    model, initial_sequence, weather_scaler, inverter_scaler, window_size,
+    forecast_steps, last_timestamp, weather_features, freq="T"
+):
+    """
+    Forecasts future inverter features based on the initial weather sequence.
     """
     try:
-        # Initialize Prophet with the provided parameters
-        m = Prophet(
-            yearly_seasonality=params.get("yearly_seasonality", True),
-            weekly_seasonality=params.get("weekly_seasonality", True),
-            daily_seasonality=params.get("daily_seasonality", True),
-            changepoint_prior_scale=params.get("changepoint_prior_scale", 0.5),
-            seasonality_prior_scale=params.get("seasonality_prior_scale", 10.0),
-            seasonality_mode=params.get("seasonality_mode", "additive"),
-            interval_width=params.get("interval_width", 0.95),
+        forecasted = []
+        current_sequence = initial_sequence.copy()
+
+        forecasted_timestamps = pd.date_range(
+            start=last_timestamp + pd.Timedelta(1, unit=freq), periods=forecast_steps, freq=freq
         )
 
-        # Add monthly and quarterly seasonality if defined
-        if "fourier_monthly" in params:
-            m.add_seasonality(
-                name="monthly", period=30.5, fourier_order=params["fourier_monthly"]
-            )
-        if "fourier_quarterly" in params:
-            m.add_seasonality(
-                name="quarterly", period=91.25, fourier_order=params["fourier_quarterly"]
-            )
+        for step in range(forecast_steps):
+            scaled_seq = weather_scaler.transform(current_sequence).reshape(1, window_size, -1)
+            pred_scaled = model.predict(scaled_seq)
+            pred = inverter_scaler.inverse_transform(pred_scaled)
 
-        # Fit the model to the data
-        m.fit(df)
-        return m
+            forecasted.append(pred.flatten())
+
+            new_timestamp = forecasted_timestamps[step]
+            new_time_features = generate_time_features(new_timestamp)
+            last_weather = current_sequence[-1][:len(weather_features)]
+            new_weather_data = last_weather
+            new_input = np.concatenate([new_weather_data, new_time_features])
+            current_sequence = np.vstack([current_sequence[1:], new_input])
+
+        return np.array(forecasted), forecasted_timestamps
+
     except Exception as e:
-        raise ValueError(f"Error setting up or running Prophet: {e}")
+        print(f"Error during future forecasting: {e}")
+        sys.exit(1)
 
-# 5. Forecast and save results to CSV
-def forecast_and_save(model, period, freq, filename):
-    """
-    This function makes future predictions using a trained Prophet model and saves the 
-    forecast results into a CSV file.
-
-    Args:
-    model (Prophet): The fitted Prophet model.
-    period (int): The number of future periods to forecast.
-    freq (str): Frequency of forecast, e.g., 'T' for minute-wise, 'H' for hourly.
-    filename (str): Path to the output CSV file where forecast will be saved.
-
-    Returns:
-    DataFrame: The forecast dataframe containing the predicted values.
-    """
-    try:
-        # Create future dates for forecasting
-        future = model.make_future_dataframe(periods=period, freq=freq)
-
-        # Make predictions
-        forecast = model.predict(future)
-
-        # Save the forecasted results
-        forecast[["ds", "yhat", "yhat_lower", "yhat_upper"]].to_csv(filename, index=False)
-        return forecast
-    except Exception as e:
-        raise ValueError(f"Error during forecasting or saving results: {e}")
