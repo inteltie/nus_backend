@@ -62,8 +62,6 @@ def get_data(df, feature_column, duration, time_range):
     # Filter the data
     data = df[(df['ds'] >= start) & (df['ds'] < end)][['ds', feature_column]]
 
-    data[feature_column] = data[feature_column].clip(lower=0)
-
     # Combine the data points based on the range and duration
     result = {
         f'{time_range}_{duration}': data.to_dict(orient='records')
@@ -101,6 +99,12 @@ def derived_data(request):
 
     # Fetch the data based on the duration and time range
     data = get_data(df, feature_column, duration, time_range)
+
+    # Replace negative values with zero
+    for hour, records in data.get(f'{time_range}_{duration}', {}).items():
+        for record in records:
+            if record[feature_column] < 0:
+                record[feature_column] = 0  # Set to zero if negative
 
     return JsonResponse(data, safe=False)
 
