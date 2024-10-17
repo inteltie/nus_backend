@@ -62,6 +62,8 @@ def get_data(df, feature_column, duration, time_range):
     # Filter the data
     data = df[(df['ds'] >= start) & (df['ds'] < end)][['ds', feature_column]]
 
+    data[feature_column] = data[feature_column].clip(lower=0)
+
     # Combine the data points based on the range and duration
     result = {
         f'{time_range}_{duration}': data.to_dict(orient='records')
