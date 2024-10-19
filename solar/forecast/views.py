@@ -160,6 +160,8 @@ def upload_and_predict(request):
 
         df_predictions = apply_zero_for_time_range(df_predictions, minute_start_time, minute_end_time)
 
+        df_predictions[inverter_features] = df_predictions[inverter_features].clip(lower=0)
+
         # Save the original minute-wise predictions to Excel
         predictions_file = os.path.join(DATA_FOLDER, "predictions_minute_wise.xlsx")
         df_predictions.to_excel(predictions_file, index=False)
