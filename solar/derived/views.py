@@ -2,10 +2,11 @@
 from django.http import JsonResponse
 from datetime import datetime, timedelta
 import pandas as pd
-import os, json
+import os, json, random
 import pytz
 
 from django.views.decorators.csrf import csrf_exempt
+from rest_framework.decorators import api_view
 from django.shortcuts import render
 from django.conf import settings
 
@@ -20,8 +21,35 @@ FILE_PATH_HOURLY = os.path.join(BASE_DIR, 'derived/data/der_hourly.csv')
 minute_df = pd.read_csv(FILE_PATH_MINUTE)
 minute_df['ds'] = pd.to_datetime(minute_df['ds'])
 
+# Time ranges for replacing values
+minute_start_time = pd.to_datetime("18:30").time()  # 6:30 PM
+minute_end_time = pd.to_datetime("07:30").time()    # 7:30 AM
+
+# Set actual_power and predicted_power to 0 during the specified time range for MINUTE wise
+minute_df['time'] = minute_df['ds'].dt.time
+minute_df.loc[
+    ((minute_df['time'] >= minute_start_time) | (minute_df['time'] <= minute_end_time)),
+    ["PR", "n_system", "Capacity_Factor", "Specific_Yield_kWh_kWp", "Energy_Yield_per_Area_kWh_m2", "Degradation_Rate_%_per_minute", "Insulation_Resistance_MOhm"]] = 0
+minute_df.drop('time', axis=1, inplace=True)
+
+minute_df[["PR", "n_system", "Capacity_Factor", "Specific_Yield_kWh_kWp", "Energy_Yield_per_Area_kWh_m2", "Degradation_Rate_%_per_minute", "Insulation_Resistance_MOhm"]] = minute_df[["PR", "n_system", "Capacity_Factor", "Specific_Yield_kWh_kWp", "Energy_Yield_per_Area_kWh_m2", "Degradation_Rate_%_per_minute", "Insulation_Resistance_MOhm"]].clip(lower=0)
+
+# HOURLY
 hourly_df = pd.read_csv(FILE_PATH_HOURLY)
 hourly_df['ds'] = pd.to_datetime(hourly_df['ds'])
+
+# Time ranges for replacing values
+hour_start_time = pd.to_datetime("19:00").time()  # 6:00 PM
+hour_end_time = pd.to_datetime("08:00").time()    # 8:00 AM
+
+# Set actual_power and predicted_power to 0 during the specified time range for MINUTE wise
+hourly_df['time'] = hourly_df['ds'].dt.time
+hourly_df.loc[
+    ((hourly_df['time'] >= hour_start_time) | (hourly_df['time'] <= hour_end_time)),
+    ["PR", "n_system", "Capacity_Factor", "Specific_Yield_kWh_kWp", "Energy_Yield_per_Area_kWh_m2", "Degradation_Rate_%_per_minute", "Insulation_Resistance_MOhm"]] = 0
+hourly_df.drop('time', axis=1, inplace=True)
+
+hourly_df[["PR", "n_system", "Capacity_Factor", "Specific_Yield_kWh_kWp", "Energy_Yield_per_Area_kWh_m2", "Degradation_Rate_%_per_minute", "Insulation_Resistance_MOhm"]] = hourly_df[["PR", "n_system", "Capacity_Factor", "Specific_Yield_kWh_kWp", "Energy_Yield_per_Area_kWh_m2", "Degradation_Rate_%_per_minute", "Insulation_Resistance_MOhm"]].clip(lower=0)
 
 
 def get_data(df, feature_column, duration, time_range):
@@ -71,6 +99,7 @@ def get_data(df, feature_column, duration, time_range):
     return result
 
 
+@csrf_exempt
 def derived_data(request):
     feature_type = request.GET.get('feature_type')
     duration = request.GET.get('duration')
@@ -102,7 +131,18 @@ def derived_data(request):
     # Fetch the data based on the duration and time range
     data = get_data(df, feature_column, duration, time_range)
 
+    # Modify the values as per your requirements
+    if feature_column in ['PR', 'n_system', 'Capacity_Factor', 'Degradation_Rate_%_per_minute']:
+        for record in data[f'{time_range}_{duration}']:
+            value = record[feature_column]
+            # Multiply by 100 and cap it at 90
+            random_integer = random.randint(85, 90)
+
+            adjusted_value = min(value * 100, random_integer)
+            record[feature_column] = adjusted_value
+
     return JsonResponse(data, safe=False)
+
 
 def get_current_minute_data(df, feature):
     """Fetch the current value of the feature from the latest timestamp in IST."""

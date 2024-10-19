@@ -20,8 +20,34 @@ FILE_PATH_HOURLY = os.path.join(BASE_DIR, 'data_api/data/inverter_hourly.csv')
 minute_df = pd.read_csv(FILE_PATH_MINUTE)
 minute_df['ds'] = pd.to_datetime(minute_df['ds'])
 
+# Time ranges for replacing values
+minute_start_time = pd.to_datetime("18:30").time()  # 6:30 PM
+minute_end_time = pd.to_datetime("07:30").time()    # 7:30 AM
+
+# Set actual_power and predicted_power to 0 during the specified time range for MINUTE wise
+minute_df['time'] = minute_df['ds'].dt.time
+minute_df.loc[
+    ((minute_df['time'] >= minute_start_time) | (minute_df['time'] <= minute_end_time)),
+    ["INVERTER1.1_Active Power_Kw", "INVERTER1.1_AC Current (A)_Phase 1", "INVERTER1.1_AC Current (A)_Phase 2", "INVERTER1.1_AC Current (A)_Phase 3", "INVERTER1.1_AC Voltage (V)_BR", "INVERTER1.1_AC Voltage (V)_RY", "INVERTER1.1_AC Voltage (V)_YB", "INVERTER1.1_Todays Gen_Kwh", "INVERTER1.1_DC Current", "INVERTER1.1_DC Voltage", "INVERTER1.1_DC Power_Kw", "INVERTER1.1_Reactive power_Kvar", "INVERTER1.1_Inverter_Temp.", "INVERTER1.1_Power Factor"]] = 0
+minute_df.drop('time', axis=1, inplace=True)
+
+minute_df[["INVERTER1.1_Active Power_Kw", "INVERTER1.1_AC Current (A)_Phase 1", "INVERTER1.1_AC Current (A)_Phase 2", "INVERTER1.1_AC Current (A)_Phase 3", "INVERTER1.1_AC Voltage (V)_BR", "INVERTER1.1_AC Voltage (V)_RY", "INVERTER1.1_AC Voltage (V)_YB", "INVERTER1.1_Todays Gen_Kwh", "INVERTER1.1_DC Current", "INVERTER1.1_DC Voltage", "INVERTER1.1_DC Power_Kw", "INVERTER1.1_Reactive power_Kvar", "INVERTER1.1_Inverter_Temp.", "INVERTER1.1_Power Factor"]] = minute_df[["INVERTER1.1_Active Power_Kw", "INVERTER1.1_AC Current (A)_Phase 1", "INVERTER1.1_AC Current (A)_Phase 2", "INVERTER1.1_AC Current (A)_Phase 3", "INVERTER1.1_AC Voltage (V)_BR", "INVERTER1.1_AC Voltage (V)_RY", "INVERTER1.1_AC Voltage (V)_YB", "INVERTER1.1_Todays Gen_Kwh", "INVERTER1.1_DC Current", "INVERTER1.1_DC Voltage", "INVERTER1.1_DC Power_Kw", "INVERTER1.1_Reactive power_Kvar", "INVERTER1.1_Inverter_Temp.", "INVERTER1.1_Power Factor"]].clip(lower=0)
+
 hourly_df = pd.read_csv(FILE_PATH_HOURLY)
 hourly_df['ds'] = pd.to_datetime(hourly_df['ds'])
+
+# Time ranges for replacing values
+hour_start_time = pd.to_datetime("19:00").time()  # 6:00 PM
+hour_end_time = pd.to_datetime("07:00").time()    # 8:00 AM
+
+# Set actual_power and predicted_power to 0 during the specified time range for MINUTE wise
+hourly_df['time'] = hourly_df['ds'].dt.time
+hourly_df.loc[
+    ((hourly_df['time'] >= hour_start_time) | (hourly_df['time'] <= hour_end_time)),
+    ["INVERTER1.1_Active Power_Kw", "INVERTER1.1_AC Current (A)_Phase 1", "INVERTER1.1_AC Current (A)_Phase 2", "INVERTER1.1_AC Current (A)_Phase 3", "INVERTER1.1_AC Voltage (V)_BR", "INVERTER1.1_AC Voltage (V)_RY", "INVERTER1.1_AC Voltage (V)_YB", "INVERTER1.1_Todays Gen_Kwh", "INVERTER1.1_DC Current", "INVERTER1.1_DC Voltage", "INVERTER1.1_DC Power_Kw", "INVERTER1.1_Reactive power_Kvar", "INVERTER1.1_Inverter_Temp.", "INVERTER1.1_Power Factor"]] = 0
+hourly_df.drop('time', axis=1, inplace=True)
+
+hourly_df[["INVERTER1.1_Active Power_Kw", "INVERTER1.1_AC Current (A)_Phase 1", "INVERTER1.1_AC Current (A)_Phase 2", "INVERTER1.1_AC Current (A)_Phase 3", "INVERTER1.1_AC Voltage (V)_BR", "INVERTER1.1_AC Voltage (V)_RY", "INVERTER1.1_AC Voltage (V)_YB", "INVERTER1.1_Todays Gen_Kwh", "INVERTER1.1_DC Current", "INVERTER1.1_DC Voltage", "INVERTER1.1_DC Power_Kw", "INVERTER1.1_Reactive power_Kvar", "INVERTER1.1_Inverter_Temp.", "INVERTER1.1_Power Factor"]] = hourly_df[["INVERTER1.1_Active Power_Kw", "INVERTER1.1_AC Current (A)_Phase 1", "INVERTER1.1_AC Current (A)_Phase 2", "INVERTER1.1_AC Current (A)_Phase 3", "INVERTER1.1_AC Voltage (V)_BR", "INVERTER1.1_AC Voltage (V)_RY", "INVERTER1.1_AC Voltage (V)_YB", "INVERTER1.1_Todays Gen_Kwh", "INVERTER1.1_DC Current", "INVERTER1.1_DC Voltage", "INVERTER1.1_DC Power_Kw", "INVERTER1.1_Reactive power_Kvar", "INVERTER1.1_Inverter_Temp.", "INVERTER1.1_Power Factor"]].clip(lower=0)
 
 
 def get_data(df, feature_column, duration, time_range):

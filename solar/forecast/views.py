@@ -145,6 +145,21 @@ def upload_and_predict(request):
         cols = ["ds"] + inverter_features
         df_predictions = df_predictions[cols]
 
+        # Time ranges for replacing values
+        minute_start_time = pd.to_datetime("18:30").time()  # 6:30 PM
+        minute_end_time = pd.to_datetime("07:30").time()    # 7:30 AM
+        hour_start_time = pd.to_datetime("18:00").time()    # 6:00 PM
+        hour_end_time = pd.to_datetime("08:00").time()      # 8:00 AM
+
+        # Logic to apply 0s for the time range if no values are missing/null
+        def apply_zero_for_time_range(df, start_time, end_time):
+            mask = df['ds'].apply(lambda x: (x.time() >= start_time or x.time() < end_time))
+            for col in inverter_features:
+                df.loc[mask & df[col].notna(), col] = 0  # Only set to 0 if the value is not null
+            return df
+
+        df_predictions = apply_zero_for_time_range(df_predictions, minute_start_time, minute_end_time)
+
         # Save the original minute-wise predictions to Excel
         predictions_file = os.path.join(DATA_FOLDER, "predictions_minute_wise.xlsx")
         df_predictions.to_excel(predictions_file, index=False)
@@ -188,6 +203,9 @@ def upload_and_predict(request):
         df_forecast_minute = df_forecast_minute[cols]
         df_concat_minute = pd.concat([df_predictions, df_forecast_minute], ignore_index=True).sort_values(by="ds")
 
+        # Here
+        df_concat_minute = apply_zero_for_time_range(df_concat_minute, minute_start_time, minute_end_time)
+
         # Save minute-wise forecasts to Excel
         forecast_minute_file = os.path.join(DATA_FOLDER, "forecast_minute_wise.xlsx")
         df_concat_minute.to_excel(forecast_minute_file, index=False)
@@ -213,6 +231,9 @@ def upload_and_predict(request):
         cols = ["ds"] + inverter_features
         df_forecast_hour = df_forecast_hour[cols]
         df_concat_hourly = pd.concat([df_predictions_hourly, df_forecast_hour], ignore_index=True).sort_values(by="ds")
+
+        # Change non-null, non-empty values to 0 for hour-wise forecast
+        df_concat_hourly = apply_zero_for_time_range(df_concat_hourly, hour_start_time, hour_end_time)
 
         # Save hour-wise forecasts to Excel
         forecast_hour_file = os.path.join(DATA_FOLDER, "forecast_hour_wise.xlsx")
@@ -339,6 +360,20 @@ def compare_power_output(request):
         # Step 2: Fill missing 'actual_power' with NaN (if not already handled by merge)
         combined_min_data['actual_power'] = combined_min_data['actual_power'].fillna(value=np.nan)
 
+        # Time ranges for replacing values
+        minute_start_time = pd.to_datetime("18:30").time()  # 6:30 PM
+        minute_end_time = pd.to_datetime("07:30").time()    # 7:30 AM
+
+        # Set actual_power and predicted_power to 0 during the specified time range for MINUTE wise
+        combined_min_data['time'] = combined_min_data['ds'].dt.time
+        combined_min_data.loc[
+            ((combined_min_data['time'] >= minute_start_time) | (combined_min_data['time'] <= minute_end_time)),
+            ['actual_power', 'predicted_power']] = 0
+        combined_min_data.drop('time', axis=1, inplace=True)
+
+        combined_min_data['actual_power'] = combined_min_data['actual_power'].clip(lower=0)
+        combined_min_data['predicted_power'] = combined_min_data['predicted_power'].clip(lower=0)
+
         # Step 1: Save the entire combined data (all rows) to a CSV file
         comparison_csv_min = os.path.join(DATA_FOLDER, 'power_min_comparison.csv')
         combined_min_data.to_csv(comparison_csv_min, index=False)
@@ -353,6 +388,20 @@ def compare_power_output(request):
 
         # Step 2: Fill missing 'actual_power' with NaN (if not already handled by merge)
         combined_full_data_hour['actual_power'] = combined_full_data_hour['actual_power'].fillna(value=np.nan)
+
+        # Time ranges for replacing values
+        hour_start_time = pd.to_datetime("19:00").time()  # 6:00 PM
+        hour_end_time = pd.to_datetime("07:00").time()    # 8:00 AM
+
+        # Set actual_power and predicted_power to 0 during the specified time range for HOURLY wise
+        combined_full_data_hour['time'] = combined_full_data_hour['ds'].dt.time
+        combined_full_data_hour.loc[
+            ((combined_full_data_hour['time'] >= hour_start_time) | (combined_full_data_hour['time'] <= hour_end_time)),
+            ['actual_power', 'predicted_power']] = 0
+        combined_full_data_hour.drop('time', axis=1, inplace=True)
+
+        combined_full_data_hour['actual_power'] = combined_full_data_hour['actual_power'].clip(lower=0)
+        combined_full_data_hour['predicted_power'] = combined_full_data_hour['predicted_power'].clip(lower=0)
 
         # Step 1: Save the entire combined data (all rows) to a CSV file
         comparison_csv_hour = os.path.join(DATA_FOLDER, 'power_hour_comparison.csv')
