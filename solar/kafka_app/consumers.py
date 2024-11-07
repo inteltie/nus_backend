@@ -47,8 +47,25 @@ class AlertManager:
     @staticmethod
     def log_to_csv(data, out_of_range_analytics):
         print(f"Logging data: {out_of_range_analytics}")  # Debugging statement
-        with open(CSV_LOG_FILE, mode='a', newline='') as file:
+
+        # Step 1: Read existing alerts to count and trim if needed
+        existing_alerts = []
+        if os.path.exists(CSV_LOG_FILE):
+            with open(CSV_LOG_FILE, mode='r') as file:
+                reader = csv.reader(file)
+                existing_alerts = list(reader)
+
+        # Step 2: Trim the list if it exceeds 49, as we'll add one more alert below
+        if len(existing_alerts) >= 50:
+            existing_alerts = existing_alerts[-49:]  # Keep only the latest 49 entries
+
+        # Step 3: Append new alerts to existing list and save
+        with open(CSV_LOG_FILE, mode='w', newline='') as file:
             writer = csv.writer(file)
+            for alert in existing_alerts:
+                writer.writerow(alert)  # Write back trimmed existing alerts
+
+            # Write new alerts
             for analytic in out_of_range_analytics:
                 unique_id = str(uuid.uuid4())  # Generate a unique ID
                 row = [
@@ -61,7 +78,8 @@ class AlertManager:
                     f"{var}: {details['actual_value']} (expected {details['expected_range']['min']} - {details['expected_range']['max']})" 
                     for var, details in analytic['out_of_range_variables'].items()
                 ]
-                writer.writerow(row)
+                writer.writerow(row)  # Write new alert
+
 
 
     @staticmethod
