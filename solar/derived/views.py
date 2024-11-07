@@ -40,7 +40,7 @@ hourly_df = pd.read_csv(FILE_PATH_HOURLY)
 hourly_df['ds'] = pd.to_datetime(hourly_df['ds'])
 
 # Time ranges for replacing values
-hour_start_time = pd.to_datetime("20:00").time()  # 6:00 PM
+hour_start_time = pd.to_datetime("19:00").time()  # 6:00 PM
 hour_end_time = pd.to_datetime("07:00").time()    # 8:00 AM
 
 # Set actual_power and predicted_power to 0 during the specified time range for MINUTE wise
