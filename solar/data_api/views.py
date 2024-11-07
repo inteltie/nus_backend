@@ -24,7 +24,7 @@ minute_df = pd.read_csv(FILE_PATH_MINUTE)
 minute_df['ds'] = pd.to_datetime(minute_df['ds'])
 
 # Time ranges for replacing values
-minute_start_time = pd.to_datetime("19:00").time()  # 6:30 PM
+minute_start_time = pd.to_datetime("18:00").time()  # 6:30 PM
 minute_end_time = pd.to_datetime("07:00").time()    # 7:30 AM
 
 # Set actual_power and predicted_power to 0 during the specified time range for MINUTE wise
