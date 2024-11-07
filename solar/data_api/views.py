@@ -98,7 +98,7 @@ def generalized_data_api(request):
 
                 response_data['data'][day_key].append({
                     'timestamp': row['ds'].strftime(f'%Y-%m-%d %H:%M'),
-                    feature_type: value
+                    'value': value
                 })
 
         elif graph_type == 'minute':
