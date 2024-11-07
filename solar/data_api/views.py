@@ -1,6 +1,8 @@
 # data_api/views.py
 from django.http import JsonResponse
+from rest_framework.response import Response
 from datetime import datetime, timedelta
+from rest_framework import status
 import pandas as pd
 import os, json
 import pytz
@@ -22,8 +24,8 @@ minute_df = pd.read_csv(FILE_PATH_MINUTE)
 minute_df['ds'] = pd.to_datetime(minute_df['ds'])
 
 # Time ranges for replacing values
-minute_start_time = pd.to_datetime("18:30").time()  # 6:30 PM
-minute_end_time = pd.to_datetime("07:30").time()    # 7:30 AM
+minute_start_time = pd.to_datetime("19:00").time()  # 6:30 PM
+minute_end_time = pd.to_datetime("07:00").time()    # 7:30 AM
 
 # Set actual_power and predicted_power to 0 during the specified time range for MINUTE wise
 minute_df['time'] = minute_df['ds'].dt.time
@@ -50,58 +52,10 @@ hourly_df.drop('time', axis=1, inplace=True)
 
 hourly_df[["INVERTER1.1_Active Power_Kw", "INVERTER1.1_AC Current (A)_Phase 1", "INVERTER1.1_AC Current (A)_Phase 2", "INVERTER1.1_AC Current (A)_Phase 3", "INVERTER1.1_AC Voltage (V)_BR", "INVERTER1.1_AC Voltage (V)_RY", "INVERTER1.1_AC Voltage (V)_YB", "INVERTER1.1_Todays Gen_Kwh", "INVERTER1.1_DC Current", "INVERTER1.1_DC Voltage", "INVERTER1.1_DC Power_Kw", "INVERTER1.1_Reactive power_Kvar", "INVERTER1.1_Inverter_Temp.", "INVERTER1.1_Power Factor"]] = hourly_df[["INVERTER1.1_Active Power_Kw", "INVERTER1.1_AC Current (A)_Phase 1", "INVERTER1.1_AC Current (A)_Phase 2", "INVERTER1.1_AC Current (A)_Phase 3", "INVERTER1.1_AC Voltage (V)_BR", "INVERTER1.1_AC Voltage (V)_RY", "INVERTER1.1_AC Voltage (V)_YB", "INVERTER1.1_Todays Gen_Kwh", "INVERTER1.1_DC Current", "INVERTER1.1_DC Voltage", "INVERTER1.1_DC Power_Kw", "INVERTER1.1_Reactive power_Kvar", "INVERTER1.1_Inverter_Temp.", "INVERTER1.1_Power Factor"]].clip(lower=0)
 
-
-def get_data(df, feature_column, duration, time_range):
-    """Helper function to get data based on feature type, duration, and range."""
-    now = datetime.now(IST)  # Get the current time in IST
-    
-    # Determine start and end based on duration and range
-    if duration == 'minute':
-        current_start = now.replace(minute=0, second=0, microsecond=0)  # Start of the current hour
-        current_end = current_start + timedelta(hours=1)  # End of the current hour
-    elif duration == 'hourly':
-        current_start = now.replace(hour=0, minute=0, second=0, microsecond=0)  # Start of the current day
-        current_end = current_start + timedelta(days=1)  # End of the current day
-    else:
-        return {'error': 'Invalid duration specified'}
-
-    # Define the start and end times for previous, current, and next ranges
-    if time_range == 'current':
-        start = current_start
-        end = current_end
-    elif time_range == 'previous':
-        start = current_start - (timedelta(hours=1) if duration == 'minute' else timedelta(days=1))
-        end = current_start
-    elif time_range == 'next':
-        start = current_end
-        end = current_end + (timedelta(hours=1) if duration == 'minute' else timedelta(days=1))
-    else:
-        return {'error': 'Invalid range specified'}
-
-    # Check if the 'ds' column is already timezone-aware
-    if df['ds'].dt.tz is None:
-        # Localize to IST if not already timezone-aware
-        df['ds'] = df['ds'].dt.tz_localize('Asia/Kolkata', ambiguous='NaT', nonexistent='NaT')
-    else:
-        # Convert to IST if already timezone-aware
-        df['ds'] = df['ds'].dt.tz_convert('Asia/Kolkata')
-    
-    # Filter the data
-    data = df[(df['ds'] >= start) & (df['ds'] < end)][['ds', feature_column]]
-
-    data[feature_column] = data[feature_column].apply(lambda x: max(x, 0))
-
-    # Combine the data points based on the range and duration
-    result = {
-        f'{time_range}_{duration}': data.to_dict(orient='records')
-    }
-    return result
-
-
+@csrf_exempt
 def generalized_data_api(request):
     feature_type = request.GET.get('feature_type')
-    duration = request.GET.get('duration')
-    time_range = request.GET.get('range')
+    graph_type = request.GET.get('graph_type')
 
     # Define the mapping of feature types to their column names
     feature_mapping = {
@@ -110,69 +64,62 @@ def generalized_data_api(request):
         'todays_gen': 'INVERTER1.1_Todays Gen_Kwh'
     }
 
-    # Select the correct data frame based on duration
-    if duration == 'minute':
-        df = minute_df
-    elif duration == 'hourly':
-        df = hourly_df
-    else:
-        return JsonResponse({'error': 'Invalid duration parameter'}, status=400)
+    if graph_type not in ['minute', 'hourly']:
+        return JsonResponse({"error": "Invalid graph_type parameter. Must be 'minute' or 'hourly'."}, 
+                             status=status.HTTP_400_BAD_REQUEST)
 
-    # Get the corresponding column name for the feature
-    feature_column = feature_mapping.get(feature_type)
-    if not feature_column:
-        return JsonResponse({'error': 'Invalid feature_type parameter'}, status=400)
+    try:
+        # Determine the file to read based on graph_type
+        if graph_type == 'minute':
+            df_data = minute_df
+        else:
+            df_data = hourly_df
 
-    # Fetch the data based on the duration and time range
-    data = get_data(df, feature_column, duration, time_range)
+        # Prepare the response data
+        response_data = {
+            'first_date': df_data['ds'].min(),
+            'last_date': df_data['ds'].max(),
+            'data': {}
+        }
 
-    return JsonResponse(data, safe=False)
+        df_data['ds'] = pd.to_datetime(df_data['ds'], errors='coerce')
 
-def get_current_minute_data(df, feature):
-    """Fetch the current value of the feature from the latest timestamp in IST."""
-    # Get current time in IST
-    now = datetime.now(IST)
-    current_time_ist = now.strftime('%H:%M')
-    
-    # Debug: Print current time being used
-    print(f"Current IST Time for filtering: {current_time_ist}")
+        # Extract and group the data
+        feature_column = feature_mapping[feature_type]
 
-    # Check if 'ds' is already timezone-aware
-    if df['ds'].dt.tz is None:
-        # Localize 'ds' to IST if not timezone-aware
-        df['ds'] = df['ds'].dt.tz_localize(IST)
-    
-    # Filter data matching the current minute
-    current_data = df[df['ds'].dt.strftime('%H:%M') == current_time_ist].tail(1)
+        if graph_type == 'hourly':
+            # Group by day
+            for _, row in df_data.iterrows():
+                day_key = row['ds'].strftime(f'%Y-%m-%d')
+                if day_key not in response_data['data']:
+                    response_data['data'][day_key] = []
+                
+                value = max(row[feature_column], 0) if pd.notna(row[feature_column]) else 0
 
-    # Debug: Check filtered data
-    print(f"Filtered Data for {current_time_ist}: {current_data}")
+                response_data['data'][day_key].append({
+                    'timestamp': row['ds'].strftime(f'%Y-%m-%d %H:%M'),
+                    feature_type: value
+                })
 
-    if not current_data.empty:
-        # Extract and return the timestamp and feature value
-        timestamp = current_data.iloc[0]['ds'].strftime('%Y-%m-%d %H:%M:%S')
-        value = current_data.iloc[0][feature]
-        return {'timestamp': timestamp, feature: value}
-    else:
-        print("No data available for the current minute")
-        return {'error': 'No data available for the current minute'}
+        elif graph_type == 'minute':
+            # Group by hour
+            for _, row in df_data.iterrows():
+                hour_key = row['ds'].strftime(f'%Y-%m-%d %H:00')  # Set to the start of the hour
+                if hour_key not in response_data['data']:
+                    response_data['data'][hour_key] = []  # Initialize as a list if it doesn't exist
 
+                value = max(row[feature_column], 0) if pd.notna(row[feature_column]) else 0
 
+                # Append the current row's data to the list for that hour
+                response_data['data'][hour_key].append({
+                    'timestamp': row['ds'].strftime(f'%Y-%m-%d %H:%M:%S'),  # Keep the minute in the timestamp
+                    feature_type: value
+                })
 
-# API for Current Active Power
-def current_active_power_api(request):
-    data = get_current_minute_data(minute_df, 'INVERTER1.1_Active Power_Kw')
-    return JsonResponse(data)
+        return JsonResponse(response_data, status=status.HTTP_200_OK)
 
-# API for Current DC Power
-def current_dc_power_api(request):
-    data = get_current_minute_data(minute_df, 'INVERTER1.1_DC Power_Kw')
-    return JsonResponse(data)
-
-# API for Current Today's Generation
-def current_todays_gen_api(request):
-    data = get_current_minute_data(minute_df, 'INVERTER1.1_Todays Gen_Kwh')
-    return JsonResponse(data)
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 # Path to analytics.json file
