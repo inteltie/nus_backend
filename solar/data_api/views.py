@@ -113,7 +113,7 @@ def generalized_data_api(request):
                 # Append the current row's data to the list for that hour
                 response_data['data'][hour_key].append({
                     'timestamp': row['ds'].strftime(f'%Y-%m-%d %H:%M:%S'),  # Keep the minute in the timestamp
-                    feature_type: value
+                    'value': value
                 })
 
         return JsonResponse(response_data, status=status.HTTP_200_OK)
