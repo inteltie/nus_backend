@@ -66,15 +66,15 @@ def run_kafka_consumer():
                 print(f"Received message: {data}")
 
                 # Check for out-of-range values
-                # out_of_range = AlertManager.check_out_of_range(data)
-                # if out_of_range:
-                #     print("Data received for out-of-range check:", data)
-                #     print("Out-of-range analytics identified:", out_of_range)
-                #     # Log to CSV and send WebSocket alert if values are out of range
-                #     AlertManager.log_to_csv(data, out_of_range)
-                #     AlertManager.send_websocket_alert(out_of_range, data)
+                out_of_range = AlertManager.check_out_of_range(data)
+                if out_of_range:
+                    print("Data received for out-of-range check:", data)
+                    print("Out-of-range analytics identified:", out_of_range)
+                    # Log to CSV and send WebSocket alert if values are out of range
+                    AlertManager.log_to_csv(data, out_of_range)
+                    AlertManager.send_websocket_alert(out_of_range, data)
 
-                # # Process the message to send to WebSocket group
+                # Process the message to send to WebSocket group
                 process_message(data)
 
     except KeyboardInterrupt:
@@ -118,16 +118,16 @@ def run_weather_consumer():
                 print(f"Received weather message: {data}")
 
                 # Check for out-of-range values for weather
-                # out_of_range = AlertManager.check_out_of_range(data)
-                # if out_of_range:
-                #     print("Data received for out-of-range check:", data)
-                #     print("Out-of-range analytics identified:", out_of_range)
+                out_of_range = AlertManager.check_out_of_range(data)
+                if out_of_range:
+                    print("Data received for out-of-range check:", data)
+                    print("Out-of-range analytics identified:", out_of_range)
 
-                #     # Log to CSV and send WebSocket alert if values are out of range
-                #     AlertManager.log_to_csv(data, out_of_range)
-                #     AlertManager.send_websocket_alert(out_of_range, data)
+                    # Log to CSV and send WebSocket alert if values are out of range
+                    AlertManager.log_to_csv(data, out_of_range)
+                    AlertManager.send_websocket_alert(out_of_range, data)
 
-                # # Process the message to send to WebSocket group
+                # Process the message to send to WebSocket group
                 process_weather_message(data)
 
     except KeyboardInterrupt:

@@ -97,7 +97,7 @@ class AlertManager:
             async_to_sync(channel_layer.group_send)(
                 "alerts_group", {"type": "send_alert", "message": message}
             )
-
+            
 
 
 # Consumers
