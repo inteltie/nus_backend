@@ -75,7 +75,7 @@ def run_kafka_consumer():
                 #     AlertManager.send_websocket_alert(out_of_range, data)
 
                 # # Process the message to send to WebSocket group
-                # process_message(data)
+                process_message(data)
 
     except KeyboardInterrupt:
         print("Consumer stopped by user")
@@ -128,7 +128,7 @@ def run_weather_consumer():
                 #     AlertManager.send_websocket_alert(out_of_range, data)
 
                 # # Process the message to send to WebSocket group
-                # process_weather_message(data)
+                process_weather_message(data)
 
     except KeyboardInterrupt:
         print("Weather consumer stopped by user")
