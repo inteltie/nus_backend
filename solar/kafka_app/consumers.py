@@ -24,25 +24,36 @@ class AlertManager:
     def check_out_of_range(inverter_data, weather_data):
         out_of_range_analytics = []
         combined_data = {**inverter_data, **weather_data}  # Combine both inverter and weather data
+        print(f"Checking out-of-range for combined data: {combined_data}")  # Debugging statement
 
         for analytic in analytics_data.get('analytics', []):
             if analytic.get("selected"):
                 out_of_range_variables = {}
+                print(f"Processing analytic: {analytic['title']}")  # Debugging statement
                 for variable, thresholds in analytic.get("variables", {}).items():
                     if variable in combined_data:
                         value = combined_data[variable]
+                        print(f"Checking variable: {variable}, value: {value}, thresholds: {thresholds}")  # Debugging
                         if value < thresholds["min"] or value > thresholds["max"]:
                             out_of_range_variables[variable] = {
                                 'actual_value': value,
                                 'expected_range': thresholds
                             }
+
                 if out_of_range_variables:
                     out_of_range_analytics.append({
                         'title': analytic['title'],
                         'description': analytic['description'],
                         'out_of_range_variables': out_of_range_variables
                     })
+
+        if out_of_range_analytics:
+            print(f"Out-of-range analytics found: {out_of_range_analytics}")  # Debugging statement
+        else:
+            print("No out-of-range analytics found.")  # Debugging statement
+
         return out_of_range_analytics
+
 
     @staticmethod
     def log_to_csv(data, out_of_range_analytics):
@@ -83,6 +94,10 @@ class AlertManager:
     @staticmethod
     def send_websocket_alert(out_of_range_analytics, data):
         print(f"Sending WebSocket alert for: {out_of_range_analytics}")  # Debugging statement
+        if not out_of_range_analytics:
+            print("No alerts to send via WebSocket.")  # Debugging statement
+            return
+
         channel_layer = get_channel_layer()
         for analytic in out_of_range_analytics:
             message = {
@@ -92,9 +107,11 @@ class AlertManager:
                 "description": analytic['description'],
                 "out_of_range_variables": analytic['out_of_range_variables']
             }
+            print(f"Prepared WebSocket message: {message}")  # Debugging statement
             async_to_sync(channel_layer.group_send)(
                 "alerts_group", {"type": "send_alert", "message": message}
             )
+
 
 # Consumers for Kafka and Weather Data
 

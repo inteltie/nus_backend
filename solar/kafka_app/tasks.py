@@ -51,6 +51,8 @@ class DataStore:
             return cls.inverter_data, cls.weather_data
         return None, None
 
+        
+
 def run_kafka_consumer():
     """Kafka Consumer for processing inverter data."""
     print("Starting the Kafka consumer task...")
