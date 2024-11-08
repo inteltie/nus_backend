@@ -48,9 +48,9 @@ class AlertManager:
                     })
 
         if out_of_range_analytics:
-            print(f"Out-of-range analytics found: {out_of_range_analytics}")  # Debugging statement
+            print(f"Out-of-range analytics found: {out_of_range_analytics}\n\n")  # Debugging statement
         else:
-            print("No out-of-range analytics found.")  # Debugging statement
+            print("No out-of-range analytics found.\n\n")  # Debugging statement
 
         return out_of_range_analytics
 
@@ -107,7 +107,7 @@ class AlertManager:
                 "description": analytic['description'],
                 "out_of_range_variables": analytic['out_of_range_variables']
             }
-            print(f"Prepared WebSocket message: {message}")  # Debugging statement
+            print(f"Prepared WebSocket message: {message}\n\n")  # Debugging statement
             async_to_sync(channel_layer.group_send)(
                 "alerts_group", {"type": "send_alert", "message": message}
             )

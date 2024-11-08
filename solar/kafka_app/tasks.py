@@ -8,7 +8,7 @@ from .consumers import AlertManager
 
 def process_message(data):
     """Send the processed Kafka message to the WebSocket group."""
-    print(f"Processing message: {data}")
+    print(f"Processing message: {data}\n\n")
     # Send the processed message to the WebSocket group
     channel_layer = get_channel_layer()
     async_to_sync(channel_layer.group_send)(
@@ -21,7 +21,7 @@ def process_message(data):
 
 def process_weather_message(data):
     """Send the processed Kafka message to the WebSocket group."""
-    print(f"Processing message: {data}")
+    print(f"Processing message: {data}\n\n")
     # Send the processed message to the WebSocket group
     channel_layer = get_channel_layer()
     async_to_sync(channel_layer.group_send)(
