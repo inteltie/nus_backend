@@ -18,18 +18,19 @@ def load_analytics():
 
 analytics_data = load_analytics()
 
-
 # Helper class for Alerts
 class AlertManager:
     @staticmethod
-    def check_out_of_range(data):
+    def check_out_of_range(inverter_data, weather_data):
         out_of_range_analytics = []
+        combined_data = {**inverter_data, **weather_data}  # Combine both inverter and weather data
+
         for analytic in analytics_data.get('analytics', []):
             if analytic.get("selected"):
                 out_of_range_variables = {}
                 for variable, thresholds in analytic.get("variables", {}).items():
-                    if variable in data:
-                        value = data[variable]
+                    if variable in combined_data:
+                        value = combined_data[variable]
                         if value < thresholds["min"] or value > thresholds["max"]:
                             out_of_range_variables[variable] = {
                                 'actual_value': value,
@@ -42,7 +43,6 @@ class AlertManager:
                         'out_of_range_variables': out_of_range_variables
                     })
         return out_of_range_analytics
-
 
     @staticmethod
     def log_to_csv(data, out_of_range_analytics):
@@ -80,8 +80,6 @@ class AlertManager:
                 ]
                 writer.writerow(row)  # Write new alert
 
-
-
     @staticmethod
     def send_websocket_alert(out_of_range_analytics, data):
         print(f"Sending WebSocket alert for: {out_of_range_analytics}")  # Debugging statement
@@ -97,10 +95,9 @@ class AlertManager:
             async_to_sync(channel_layer.group_send)(
                 "alerts_group", {"type": "send_alert", "message": message}
             )
-            
 
+# Consumers for Kafka and Weather Data
 
-# Consumers
 class KafkaConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         await self.channel_layer.group_add('kafka_group', self.channel_name)
@@ -141,3 +138,4 @@ class AlertConsumer(AsyncWebsocketConsumer):
 
     async def send_alert(self, event):
         await self.send(text_data=json.dumps(event['message']))
+
