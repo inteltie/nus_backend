@@ -491,6 +491,7 @@ def get_power_comparison(request):
         df_resampled_monthly = df_comparison.set_index('ds').resample('M').mean().reset_index()
 
         if graph_type == 'hourly':
+            df_comparison.loc[df_comparison.index[-24:], 'actual_power'] = None
             # Group by day
             for _, row in df_comparison.iterrows():
                 day_key = row['ds'].strftime(f'%Y-%m-%d')
@@ -507,6 +508,7 @@ def get_power_comparison(request):
                 })
 
         elif graph_type == 'minute':
+            df_comparison.loc[df_comparison.index[-100:], 'actual_power'] = None
             # Group by hour
             for _, row in df_comparison.iterrows():
                 hour_key = row['ds'].strftime(f'%Y-%m-%d %H:00')  # Set to the start of the hour
