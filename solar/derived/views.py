@@ -106,6 +106,13 @@ def derived_data(request):
                     adjusted_value = min(value * 100, random_integer)
                     value = adjusted_value  # Update the value
 
+                # Add the new logic here to adjust values
+                if feature_column in ['n_system']:
+                    # Apply the new logic
+                    random_integer2 = random.randint(18, 23)
+                    adjusted_value2 = min(value * 100, random_integer2)
+                    value = adjusted_value2  # Update the value
+
                 response_data['data'][day_key].append({
                     'timestamp': row['ds'].strftime(f'%Y-%m-%d %H:%M'),
                     'value': value
@@ -126,6 +133,13 @@ def derived_data(request):
                     random_integer = random.randint(85, 90)
                     adjusted_value = min(value * 100, random_integer)
                     value = adjusted_value  # Update the value
+
+                # Add the new logic here to adjust values
+                if feature_column in ['n_system']:
+                    # Apply the new logic
+                    random_integer2 = random.randint(18, 23)
+                    adjusted_value2 = min(value * 100, random_integer2)
+                    value = adjusted_value2  # Update the value
 
                 # Append the current row's data to the list for that hour
                 response_data['data'][hour_key].append({
