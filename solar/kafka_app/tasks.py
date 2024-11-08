@@ -148,16 +148,16 @@ def run_weather_consumer():
                 DataStore.update_weather_data(data)
 
                 # Get combined data from both sources (weather and inverter)
-                # inverter_data, weather_data = DataStore.get_combined_data()
+                inverter_data, weather_data = DataStore.get_combined_data()
 
-                # if inverter_data and weather_data:
-                #     # Check for out-of-range values
-                #     out_of_range = AlertManager.check_out_of_range(inverter_data, weather_data)
-                #     if out_of_range:
-                #         print("Out-of-range analytics identified:", out_of_range)
-                #         # Log to CSV and send WebSocket alert if values are out of range
-                #         AlertManager.log_to_csv(data, out_of_range)
-                #         AlertManager.send_websocket_alert(out_of_range, data)
+                if inverter_data and weather_data:
+                    # Check for out-of-range values
+                    out_of_range = AlertManager.check_out_of_range(inverter_data, weather_data)
+                    if out_of_range:
+                        print("Out-of-range analytics identified:", out_of_range)
+                        # Log to CSV and send WebSocket alert if values are out of range
+                        # AlertManager.log_to_csv(data, out_of_range)
+                        # AlertManager.send_websocket_alert(out_of_range, data)
 
                 # Process the message to send to WebSocket group
                 process_weather_message(data)
