@@ -501,7 +501,7 @@ def get_power_comparison(request):
                 predicted_power = max(row['predicted_power'], 0) if pd.notna(row['predicted_power']) else 0
 
                 response_data['data'][day_key].append({
-                    'timestamp': row['ds'].strftime(f'%Y-%m-%d %H:%M'),
+                    'timestamp': row['ds'].strftime(f'%Y-%m-%d %H:00'),
                     'actual_power': actual_power,
                     'predicted_power': predicted_power
                 })
