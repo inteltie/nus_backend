@@ -498,7 +498,7 @@ def get_power_comparison(request):
                 if day_key not in response_data['data']:
                     response_data['data'][day_key] = []
                 
-                actual_power = max(row['actual_power'], 0) if pd.notna(row['actual_power']) else 0
+                actual_power = max(row['actual_power'], 0) if pd.notna(row['actual_power']) else None
                 predicted_power = max(row['predicted_power'], 0) if pd.notna(row['predicted_power']) else 0
 
                 response_data['data'][day_key].append({
@@ -515,7 +515,7 @@ def get_power_comparison(request):
                 if hour_key not in response_data['data']:
                     response_data['data'][hour_key] = []  # Initialize as a list if it doesn't exist
 
-                actual_power = max(row['actual_power'], 0) if pd.notna(row['actual_power']) else 0
+                actual_power = max(row['actual_power'], 0) if pd.notna(row['actual_power']) else None
                 predicted_power = max(row['predicted_power'], 0) if pd.notna(row['predicted_power']) else 0
 
                 # Append the current row's data to the list for that hour
