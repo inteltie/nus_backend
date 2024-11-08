@@ -32,6 +32,25 @@ def process_weather_message(data):
         }
     )
 
+class DataStore:
+    """Class to store the latest inverter and weather data."""
+    inverter_data = None
+    weather_data = None
+
+    @classmethod
+    def update_inverter_data(cls, data):
+        cls.inverter_data = data
+
+    @classmethod
+    def update_weather_data(cls, data):
+        cls.weather_data = data
+
+    @classmethod
+    def get_combined_data(cls):
+        if cls.inverter_data and cls.weather_data:
+            return cls.inverter_data, cls.weather_data
+        return None, None
+
 def run_kafka_consumer():
     """Kafka Consumer for processing inverter data."""
     print("Starting the Kafka consumer task...")
@@ -39,7 +58,7 @@ def run_kafka_consumer():
     # Kafka consumer configuration
     consumer_config = {
         'bootstrap.servers': 'b-2.mskclusternus1.8z6j8x.c2.kafka.ap-northeast-2.amazonaws.com:9092,b-1.mskclusternus1.8z6j8x.c2.kafka.ap-northeast-2.amazonaws.com:9092',
-        'group.id': 'my-consumer-group-2',
+        'group.id': 'inverter-consumer-group',
         'auto.offset.reset': 'latest',
         'security.protocol': 'PLAINTEXT',
         'max.poll.interval.ms': 900000
@@ -63,28 +82,34 @@ def run_kafka_consumer():
             else:
                 # Successfully received a message
                 data = json.loads(msg.value().decode('utf-8'))
-                print(f"Received message: {data}")
+                print(f"Received inverter data: {data}")
 
-                # Check for out-of-range values
-                out_of_range = AlertManager.check_out_of_range(data)
-                if out_of_range:
-                    print("Data received for out-of-range check:", data)
-                    print("Out-of-range analytics identified:", out_of_range)
-                    # Log to CSV and send WebSocket alert if values are out of range
-                    AlertManager.log_to_csv(data, out_of_range)
-                    AlertManager.send_websocket_alert(out_of_range, data)
+                # Update the shared data store
+                DataStore.update_inverter_data(data)
+
+                # Get combined data from both sources (weather and inverter)
+                inverter_data, weather_data = DataStore.get_combined_data()
+
+                if inverter_data and weather_data:
+                    # Check for out-of-range values
+                    out_of_range = AlertManager.check_out_of_range(inverter_data, weather_data)
+                    if out_of_range:
+                        print("Out-of-range analytics identified:", out_of_range)
+                        # Log to CSV and send WebSocket alert if values are out of range
+                        AlertManager.log_to_csv(data, out_of_range)
+                        AlertManager.send_websocket_alert(out_of_range, data)
 
                 # Process the message to send to WebSocket group
                 process_message(data)
 
     except KeyboardInterrupt:
-        print("Consumer stopped by user")
+        print("Inverter consumer stopped by user")
 
     finally:
         consumer.close()
 
 
-# Weather Data Consumer Task
+
 def run_weather_consumer():
     """Kafka Consumer for processing weather data."""
     print("Starting the Weather Kafka consumer task...")
@@ -115,17 +140,22 @@ def run_weather_consumer():
             else:
                 # Successfully received a message
                 data = json.loads(msg.value().decode('utf-8'))
-                print(f"Received weather message: {data}")
+                print(f"Received weather data: {data}")
 
-                # Check for out-of-range values for weather
-                out_of_range = AlertManager.check_out_of_range(data)
-                if out_of_range:
-                    print("Data received for out-of-range check:", data)
-                    print("Out-of-range analytics identified:", out_of_range)
+                # Update the shared data store
+                DataStore.update_weather_data(data)
 
-                    # Log to CSV and send WebSocket alert if values are out of range
-                    AlertManager.log_to_csv(data, out_of_range)
-                    AlertManager.send_websocket_alert(out_of_range, data)
+                # Get combined data from both sources (weather and inverter)
+                inverter_data, weather_data = DataStore.get_combined_data()
+
+                if inverter_data and weather_data:
+                    # Check for out-of-range values
+                    out_of_range = AlertManager.check_out_of_range(inverter_data, weather_data)
+                    if out_of_range:
+                        print("Out-of-range analytics identified:", out_of_range)
+                        # Log to CSV and send WebSocket alert if values are out of range
+                        AlertManager.log_to_csv(data, out_of_range)
+                        AlertManager.send_websocket_alert(out_of_range, data)
 
                 # Process the message to send to WebSocket group
                 process_weather_message(data)
