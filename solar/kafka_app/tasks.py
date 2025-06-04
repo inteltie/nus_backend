@@ -5,6 +5,13 @@ from confluent_kafka import Consumer, KafkaException
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from .consumers import AlertManager
+from .read_excel_stream import stream_csv_data_per_minute
+import os
+
+# File paths for the CSV files
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+FILE_INV_MINUTE = os.path.join(BASE_DIR, 'kafka_app/excel_data/inv_min_2.csv')
+FILE_WEATHER_MINUTE = os.path.join(BASE_DIR, 'kafka_app/excel_data/Weather_min.csv')
 
 def process_message(data):
     """Send the processed Kafka message to the WebSocket group."""
@@ -34,104 +41,107 @@ def process_weather_message(data):
 
 def run_kafka_consumer():
     """Kafka Consumer for processing inverter data."""
-    print("Starting the Kafka consumer task...")
+    # print("Starting the Kafka consumer task...")
 
-    # Kafka consumer configuration
-    consumer_config = {
-        'bootstrap.servers': 'b-2.mskclusternus1.8z6j8x.c2.kafka.ap-northeast-2.amazonaws.com:9092,b-1.mskclusternus1.8z6j8x.c2.kafka.ap-northeast-2.amazonaws.com:9092',
-        'group.id': 'my-consumer-group-2',
-        'auto.offset.reset': 'latest',
-        'security.protocol': 'PLAINTEXT',
-        'max.poll.interval.ms': 900000
-    }
+    # # Kafka consumer configuration
+    # consumer_config = {
+    #     'bootstrap.servers': 'b-2.mskclusternus1.8z6j8x.c2.kafka.ap-northeast-2.amazonaws.com:9092,b-1.mskclusternus1.8z6j8x.c2.kafka.ap-northeast-2.amazonaws.com:9092',
+    #     'group.id': 'my-consumer-group-2',
+    #     'auto.offset.reset': 'latest',
+    #     'security.protocol': 'PLAINTEXT',
+    #     'max.poll.interval.ms': 900000
+    # }
 
-    consumer = Consumer(consumer_config)
-    topic = 'inverter-topic-1'
-    consumer.subscribe([topic])
+    # consumer = Consumer(consumer_config)
+    # topic = 'inverter-topic-1'
+    # consumer.subscribe([topic])
 
-    print(f'Subscribed to Kafka topic: {topic}')
+    # print(f'Subscribed to Kafka topic: {topic}')
 
     try:
-        while True:
-            # Polling messages from Kafka
-            msg = consumer.poll(1.0)
-            if msg is None:
-                # No message received
-                continue
-            if msg.error():
-                print(f"Consumer error: {msg.error()}")
-            else:
-                # Successfully received a message
-                data = json.loads(msg.value().decode('utf-8'))
-                print(f"Received message: {data}")
+    #     while True:
+    #         # Polling messages from Kafka
+    #         msg = consumer.poll(1.0)
+    #         if msg is None:
+    #             # No message received
+    #             continue
+    #         if msg.error():
+    #             print(f"Consumer error: {msg.error()}")
+    #         else:
+    #             # Successfully received a message
+    #             data = json.loads(msg.value().decode('utf-8'))
+    #             print(f"Received message: {data}")
+        for row_data in stream_csv_data_per_minute(FILE_INV_MINUTE, delay_seconds=60):
+            data = row_data
+            # Check for out-of-range values
+            out_of_range = AlertManager.check_out_of_range(data)
+            if out_of_range:
+                print("Data received for out-of-range check:", data)
+                print("Out-of-range analytics identified:", out_of_range)
+                # Log to CSV and send WebSocket alert if values are out of range
+                AlertManager.log_to_csv(data, out_of_range)
+                AlertManager.send_websocket_alert(out_of_range, data)
 
-                # Check for out-of-range values
-                out_of_range = AlertManager.check_out_of_range(data)
-                if out_of_range:
-                    print("Data received for out-of-range check:", data)
-                    print("Out-of-range analytics identified:", out_of_range)
-                    # Log to CSV and send WebSocket alert if values are out of range
-                    AlertManager.log_to_csv(data, out_of_range)
-                    AlertManager.send_websocket_alert(out_of_range, data)
-
-                # Process the message to send to WebSocket group
-                process_message(data)
+            # Process the message to send to WebSocket group
+            process_message(data)
 
     except KeyboardInterrupt:
         print("Consumer stopped by user")
 
-    finally:
-        consumer.close()
+    # finally:
+    #     consumer.close()
 
 
 # Weather Data Consumer Task
 def run_weather_consumer():
     """Kafka Consumer for processing weather data."""
-    print("Starting the Weather Kafka consumer task...")
+    # print("Starting the Weather Kafka consumer task...")
 
-    consumer_config = {
-        'bootstrap.servers': 'b-2.mskclusternus1.8z6j8x.c2.kafka.ap-northeast-2.amazonaws.com:9092,b-1.mskclusternus1.8z6j8x.c2.kafka.ap-northeast-2.amazonaws.com:9092',
-        'group.id': 'weather-consumer-group',
-        'auto.offset.reset': 'latest',
-        'security.protocol': 'PLAINTEXT',
-        'max.poll.interval.ms': 900000
-    }
+    # consumer_config = {
+    #     'bootstrap.servers': 'b-2.mskclusternus1.8z6j8x.c2.kafka.ap-northeast-2.amazonaws.com:9092,b-1.mskclusternus1.8z6j8x.c2.kafka.ap-northeast-2.amazonaws.com:9092',
+    #     'group.id': 'weather-consumer-group',
+    #     'auto.offset.reset': 'latest',
+    #     'security.protocol': 'PLAINTEXT',
+    #     'max.poll.interval.ms': 900000
+    # }
 
-    consumer = Consumer(consumer_config)
-    topic = 'weather-topic-1'
-    consumer.subscribe([topic])
+    # consumer = Consumer(consumer_config)
+    # topic = 'weather-topic-1'
+    # consumer.subscribe([topic])
 
-    print(f'Subscribed to Kafka topic: {topic}')
+    # print(f'Subscribed to Kafka topic: {topic}')
 
     try:
-        while True:
-            # Polling messages from Kafka
-            msg = consumer.poll(1.0)
-            if msg is None:
-                # No message received
-                continue
-            if msg.error():
-                print(f"Consumer error: {msg.error()}")
-            else:
-                # Successfully received a message
-                data = json.loads(msg.value().decode('utf-8'))
-                print(f"Received weather message: {data}")
+    #     while True:
+    #         # Polling messages from Kafka
+    #         msg = consumer.poll(1.0)
+    #         if msg is None:
+    #             # No message received
+    #             continue
+    #         if msg.error():
+    #             print(f"Consumer error: {msg.error()}")
+    #         else:
+    #             # Successfully received a message
+    #             data = json.loads(msg.value().decode('utf-8'))
+    #             print(f"Received weather message: {data}")
 
                 # Check for out-of-range values for weather
-                out_of_range = AlertManager.check_out_of_range(data)
-                if out_of_range:
-                    print("Data received for out-of-range check:", data)
-                    print("Out-of-range analytics identified:", out_of_range)
+        for row_data in stream_csv_data_per_minute(FILE_WEATHER_MINUTE, delay_seconds=60):
+            data = row_data
+            out_of_range = AlertManager.check_out_of_range(data)
+            if out_of_range:
+                print("Data received for out-of-range check:", data)
+                print("Out-of-range analytics identified:", out_of_range)
 
-                    # Log to CSV and send WebSocket alert if values are out of range
-                    AlertManager.log_to_csv(data, out_of_range)
-                    AlertManager.send_websocket_alert(out_of_range, data)
+                # Log to CSV and send WebSocket alert if values are out of range
+                AlertManager.log_to_csv(data, out_of_range)
+                AlertManager.send_websocket_alert(out_of_range, data)
 
-                # Process the message to send to WebSocket group
-                process_weather_message(data)
+            # Process the message to send to WebSocket group
+            process_weather_message(data)
 
     except KeyboardInterrupt:
         print("Weather consumer stopped by user")
 
-    finally:
-        consumer.close()
+    # finally:
+    #     consumer.close()
