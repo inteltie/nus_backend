@@ -7,6 +7,7 @@ from channels.layers import get_channel_layer
 from .consumers import AlertManager
 from .read_excel_stream import stream_csv_data_per_minute
 import os
+from solar import app
 
 # File paths for the CSV files
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -39,7 +40,8 @@ def process_weather_message(data):
         }
     )
 
-def run_kafka_consumer():
+@app.task(bind=True, track_started=True)
+def run_kafka_consumer(self):
     """Kafka Consumer for processing inverter data."""
     # print("Starting the Kafka consumer task...")
 
@@ -93,7 +95,8 @@ def run_kafka_consumer():
 
 
 # Weather Data Consumer Task
-def run_weather_consumer():
+@app.task(bind=True, track_started=True)
+def run_weather_consumer(self):
     """Kafka Consumer for processing weather data."""
     # print("Starting the Weather Kafka consumer task...")
 

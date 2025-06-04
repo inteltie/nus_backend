@@ -9,11 +9,11 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CSV_LOG_FILE = os.path.join(BASE_DIR, 'kafka_app', 'alert_logs.csv')
 
 def start_kafka_consumer(request):
-    run_kafka_consumer()
+    run_kafka_consumer.delay()
     return JsonResponse({"status": "Kafka consumer started"})
 
 def start_weather_consumer(request):
-    run_weather_consumer()
+    run_weather_consumer.delay()
     return JsonResponse({"status": "Weather consumer started"})
 
 @csrf_exempt
