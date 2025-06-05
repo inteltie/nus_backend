@@ -69,7 +69,7 @@ async def run_kafka_consumer():
     #             # Successfully received a message
     #             data = json.loads(msg.value().decode('utf-8'))
     #             print(f"Received message: {data}")
-        for row_data in stream_csv_data_per_minute(FILE_INV_MINUTE, delay_seconds=60):
+        async for row_data in stream_csv_data_per_minute(FILE_INV_MINUTE, delay_seconds=60):
             data = row_data
             # Check for out-of-range values
             out_of_range = AlertManager.check_out_of_range(data)
@@ -124,7 +124,7 @@ async def run_weather_consumer():
     #             print(f"Received weather message: {data}")
 
                 # Check for out-of-range values for weather
-        for row_data in stream_csv_data_per_minute(FILE_WEATHER_MINUTE, delay_seconds=5):
+        async for row_data in stream_csv_data_per_minute(FILE_WEATHER_MINUTE, delay_seconds=60):
             data = row_data
             out_of_range = AlertManager.check_out_of_range(data)
             if out_of_range:
