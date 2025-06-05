@@ -26,7 +26,7 @@ def stream_csv_data_per_minute(
     now = datetime.now(tz).replace(second=0, microsecond=0)
 
     # Find the row index where ds is just less than or equal to current time
-    start_index = df[df[timestamp_column] <= now].shape[0] - 1
+    start_index = df[df[timestamp_column] <= now].shape[0]-1
     if start_index < 0:
         print(f"No matching timestamp <= current time ({now}).")
         return
