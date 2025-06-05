@@ -73,19 +73,20 @@ async def run_kafka_consumer():
             if row_data['ds']!=last_sent_ds:
                 last_sent_ds = row_data['ds']
                 data = row_data
-            else:
-                pass
-            # Check for out-of-range values
-            out_of_range = AlertManager.check_out_of_range(data)
-            if out_of_range:
-                print("Data received for out-of-range check:", data)
-                print("Out-of-range analytics identified:", out_of_range)
-                # Log to CSV and send WebSocket alert if values are out of range
-                AlertManager.log_to_csv(data, out_of_range)
-                await AlertManager.send_websocket_alert(out_of_range, data)
+            
+                # Check for out-of-range values
+                out_of_range = AlertManager.check_out_of_range(data)
+                if out_of_range:
+                    print("Data received for out-of-range check:", data)
+                    print("Out-of-range analytics identified:", out_of_range)
+                    # Log to CSV and send WebSocket alert if values are out of range
+                    AlertManager.log_to_csv(data, out_of_range)
+                    await AlertManager.send_websocket_alert(out_of_range, data)
 
-            # Process the message to send to WebSocket group
-            await process_message(data)
+                # Process the message to send to WebSocket group
+                await process_message(data)
+            else:
+                continue
 
     except KeyboardInterrupt:
         print("Consumer stopped by user")
@@ -133,20 +134,20 @@ async def run_weather_consumer():
             if row_data['ds']!=last_sent_ds:
                 last_sent_ds = row_data['ds']
                 data = row_data
+            
+                out_of_range = AlertManager.check_out_of_range(data)
+                if out_of_range:
+                    print("Data received for out-of-range check:", data)
+                    print("Out-of-range analytics identified:", out_of_range)
+
+                    # Log to CSV and send WebSocket alert if values are out of range
+                    AlertManager.log_to_csv(data, out_of_range)
+                    await AlertManager.send_websocket_alert(out_of_range, data)
+
+                # Process the message to send to WebSocket group
+                await process_weather_message(data)
             else:
-                pass
-            out_of_range = AlertManager.check_out_of_range(data)
-            if out_of_range:
-                print("Data received for out-of-range check:", data)
-                print("Out-of-range analytics identified:", out_of_range)
-
-                # Log to CSV and send WebSocket alert if values are out of range
-                AlertManager.log_to_csv(data, out_of_range)
-                await AlertManager.send_websocket_alert(out_of_range, data)
-
-            # Process the message to send to WebSocket group
-            await process_weather_message(data)
-
+                continue
     except KeyboardInterrupt:
         print("Weather consumer stopped by user")
 
