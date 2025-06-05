@@ -5,6 +5,7 @@ from datetime import datetime
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.layers import get_channel_layer
 import uuid
+import asyncio
 
 # Define file paths
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -83,7 +84,7 @@ class AlertManager:
 
 
     @staticmethod
-    def send_websocket_alert(out_of_range_analytics, data):
+    async def send_websocket_alert(out_of_range_analytics, data):
         print(f"Sending WebSocket alert for: {out_of_range_analytics}")  # Debugging statement
         channel_layer = get_channel_layer()
         for analytic in out_of_range_analytics:
@@ -94,9 +95,14 @@ class AlertManager:
                 "description": analytic['description'],
                 "out_of_range_variables": analytic['out_of_range_variables']
             }
-            async_to_sync(channel_layer.group_send)(
-                "alerts_group", {"type": "send_alert", "message": message}
+            await channel_layer.group_send(
+                "alerts_group",
+                {
+                    "type": "send_alert",
+                    "message": message
+                }
             )
+
             
 
 
@@ -110,7 +116,14 @@ class KafkaConsumer(AsyncWebsocketConsumer):
         await self.channel_layer.group_discard('kafka_group', self.channel_name)
 
     async def receive(self, text_data):
-        await self.send(text_data=json.dumps({"message": f"Echo: {text_data}"}))
+        data = json.loads(text_data)
+
+        if data.get("command") == "start_kafka_consumer":
+            from .tasks import run_kafka_consumer
+            asyncio.create_task(run_kafka_consumer())  # run in background
+            await self.send(text_data=json.dumps({"message": "Kafka consumer started"}))
+        else:
+            await self.send(text_data=json.dumps({"message": f"Echo: {text_data}"}))
 
     async def send_kafka_message(self, event):
         await self.send(text_data=json.dumps({'message': event['message']}))
@@ -125,7 +138,14 @@ class WeatherConsumer(AsyncWebsocketConsumer):
         await self.channel_layer.group_discard('weather_group', self.channel_name)
 
     async def receive(self, text_data):
-        await self.send(text_data=json.dumps({"message": f"Echo: {text_data}"}))
+        data = json.loads(text_data)
+
+        if data.get("command") == "start_weather_consumer":
+            from .tasks import run_weather_consumer
+            asyncio.create_task(run_weather_consumer())  # run in background
+            await self.send(text_data=json.dumps({"message": "Weather consumer started"}))
+        else:
+            await self.send(text_data=json.dumps({"message": f"Echo: {text_data}"}))
 
     async def send_weather_message(self, event):
         await self.send(text_data=json.dumps({'message': event['message']}))

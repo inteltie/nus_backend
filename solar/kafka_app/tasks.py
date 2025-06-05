@@ -14,25 +14,23 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FILE_INV_MINUTE = os.path.join(BASE_DIR, 'kafka_app/excel_data/inv_min_2.csv')
 FILE_WEATHER_MINUTE = os.path.join(BASE_DIR, 'kafka_app/excel_data/Weather_min.csv')
 
-def process_message(data):
-    """Send the processed Kafka message to the WebSocket group."""
+async def process_message(data):
     print(f"Processing message: {data}")
-    # Send the processed message to the WebSocket group
     channel_layer = get_channel_layer()
-    async_to_sync(channel_layer.group_send)(
-        'kafka_group',  # Ensure this matches the group name in the WebSocket consumer
+    await channel_layer.group_send(
+        'kafka_group',
         {
-            'type': 'send_kafka_message',  # This should match the method in the WebSocket consumer
+            'type': 'send_kafka_message',
             'message': data
         }
     )
 
-def process_weather_message(data):
+async def process_weather_message(data):
     """Send the processed Kafka message to the WebSocket group."""
     print(f"Processing message: {data}")
     # Send the processed message to the WebSocket group
     channel_layer = get_channel_layer()
-    async_to_sync(channel_layer.group_send)(
+    await channel_layer.group_send(
         'weather_group',  # Ensure this matches the group name in the WebSocket consumer
         {
             'type': 'send_weather_message',  # This should match the method in the WebSocket consumer
@@ -40,8 +38,7 @@ def process_weather_message(data):
         }
     )
 
-@app.task(bind=True, track_started=True)
-def run_kafka_consumer(self):
+async def run_kafka_consumer():
     """Kafka Consumer for processing inverter data."""
     # print("Starting the Kafka consumer task...")
 
@@ -82,10 +79,10 @@ def run_kafka_consumer(self):
                 print("Out-of-range analytics identified:", out_of_range)
                 # Log to CSV and send WebSocket alert if values are out of range
                 AlertManager.log_to_csv(data, out_of_range)
-                AlertManager.send_websocket_alert(out_of_range, data)
+                await  AlertManager.send_websocket_alert(out_of_range, data)
 
             # Process the message to send to WebSocket group
-            process_message(data)
+            await process_message(data)
 
     except KeyboardInterrupt:
         print("Consumer stopped by user")
@@ -95,8 +92,7 @@ def run_kafka_consumer(self):
 
 
 # Weather Data Consumer Task
-@app.task(bind=True, track_started=True)
-def run_weather_consumer(self):
+async def run_weather_consumer():
     """Kafka Consumer for processing weather data."""
     # print("Starting the Weather Kafka consumer task...")
 
@@ -129,7 +125,7 @@ def run_weather_consumer(self):
     #             print(f"Received weather message: {data}")
 
                 # Check for out-of-range values for weather
-        for row_data in stream_csv_data_per_minute(FILE_WEATHER_MINUTE, delay_seconds=60):
+        for row_data in stream_csv_data_per_minute(FILE_WEATHER_MINUTE, delay_seconds=5):
             data = row_data
             out_of_range = AlertManager.check_out_of_range(data)
             if out_of_range:
@@ -138,10 +134,10 @@ def run_weather_consumer(self):
 
                 # Log to CSV and send WebSocket alert if values are out of range
                 AlertManager.log_to_csv(data, out_of_range)
-                AlertManager.send_websocket_alert(out_of_range, data)
+                await AlertManager.send_websocket_alert(out_of_range, data)
 
             # Process the message to send to WebSocket group
-            process_weather_message(data)
+            await process_weather_message(data)
 
     except KeyboardInterrupt:
         print("Weather consumer stopped by user")
